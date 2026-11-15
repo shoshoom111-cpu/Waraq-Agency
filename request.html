@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>اطلب خدمة · وكالة ورق</title>
+<meta name="description" content="سجّل طلبك لدى وكالة ورق: بياناتك، كتابك وحالته، والخدمة اللي تحتاجها.">
+<meta name="theme-color" content="#f3f5f1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2316223a'/%3E%3Crect x='10' y='38' width='44' height='12' fill='%23ffd84a'/%3E%3Ctext x='32' y='44' font-family='Tahoma' font-weight='700' font-size='34' fill='%23fff' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;800&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3f5f1; --sheet:#ffffff; --ink:#16223a; --muted:#56637a; --rule:#cfd6dc; --mark:#ffd84a; --bad:#b3372f; --ok:#2f7d4f;
+  --display:"Noto Kufi Arabic","Geeza Pro",Tahoma,sans-serif;
+  --body:"Noto Naskh Arabic","Geeza Pro","Traditional Arabic",serif;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --lift:0 1px 0 var(--rule),0 22px 34px -18px rgba(22,34,58,.32),0 3px 8px rgba(22,34,58,.06);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scrollbar-color:var(--muted) var(--paper);-webkit-text-size-adjust:100%}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.8;caret-color:var(--ink)}
+::selection{background:var(--mark);color:var(--ink)}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.45}
+p{margin:0;text-wrap:pretty}
+a{color:inherit;text-underline-offset:5px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+.mast{display:flex;gap:10px 24px;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:2px solid var(--ink)}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none}
+.brand b{font-family:var(--display);font-weight:800;font-size:1.9rem;line-height:1}
+.brand span{color:var(--muted);font-size:.95rem}
+.back{font-family:var(--display);font-size:.95rem;text-decoration:none;display:inline-flex;gap:6px;align-items:center}
+.back:hover{text-decoration:underline}
+.back svg{width:1em;height:1em}
+
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:1rem;line-height:1.6;text-decoration:none;border:2px solid var(--ink);padding:10px 24px;background:var(--ink);color:var(--sheet);cursor:pointer;transition:background-color .18s,color .18s,transform .18s var(--ease)}
+.btn:hover{background:var(--mark);color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn.line{background:transparent;color:var(--ink)}
+.btn.line:hover{background:var(--ink);color:var(--sheet)}
+.btn[disabled]{cursor:progress;opacity:.75}
+.spin{display:none;width:1em;height:1em;border:2px solid currentColor;border-inline-end-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+.btn[aria-busy="true"] .spin{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.intro{padding:52px 0 34px;max-width:40em}
+h1{font-size:clamp(2.1rem,5vw,3.3rem);font-weight:800;line-height:1.4}
+.hl{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .42em;padding:0 .08em}
+.intro p{font-size:1.12rem;margin-top:14px;color:var(--muted)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;padding-bottom:80px}
+.sheet{background:var(--sheet);box-shadow:var(--lift);padding:8px 34px 34px;position:relative}
+.sheet::before,.sheet::after{content:"";position:absolute;width:18px;height:18px;border:1.5px solid var(--ink)}
+.sheet::before{top:-10px;right:-10px;border-left:0;border-bottom:0}
+.sheet::after{bottom:-10px;left:-10px;border-right:0;border-top:0}
+
+fieldset.part{border:0;margin:0;padding:28px 0 6px;border-bottom:1px solid var(--rule);min-width:0}
+fieldset.part:last-of-type{border-bottom:0}
+.part>legend{display:flex;align-items:baseline;gap:12px;padding:0;margin-bottom:18px;float:right;width:100%}
+.part>legend+*{clear:both}
+.part>legend b{font-family:var(--display);font-size:.85rem;font-weight:700;color:var(--muted)}
+.part>legend span{font-family:var(--display);font-size:1.3rem;font-weight:800}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px}
+.full{grid-column:1/-1}
+.f label,.f .lab{display:block;font-family:var(--display);font-weight:700;font-size:.9rem;margin-bottom:6px}
+.f label small,.f .lab small{font-weight:500;color:var(--muted);font-size:.8rem}
+.f input[type=text],.f input[type=tel],.f input[type=email],.f input[type=url],.f select,.f textarea{width:100%;font:inherit;font-size:1.02rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px;transition:border-color .15s,background-color .15s}
+.f select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);background-position:left 18px center,left 12px center;background-size:6px 6px;background-repeat:no-repeat;padding-left:34px}
+.f input:hover,.f select:hover,.f textarea:hover{border-color:var(--muted)}
+.f input:focus,.f select:focus,.f textarea:focus{outline:0;border-color:var(--ink);background-color:var(--sheet)}
+.f input[aria-invalid="true"]{border-color:var(--bad);background-color:#fff6f5}
+.f textarea{min-height:110px;resize:vertical}
+.f .note{font-size:.85rem;color:var(--muted);margin-top:5px}
+.picks{display:flex;flex-wrap:wrap;gap:8px}
+.picks label{margin:0;cursor:pointer;font-family:var(--display);font-weight:500;font-size:.92rem;border:1.5px solid var(--rule);background:var(--paper);padding:7px 16px;display:inline-flex;gap:8px;align-items:center;transition:border-color .15s,background-color .15s}
+.picks label:hover{border-color:var(--ink)}
+.picks input{position:absolute;opacity:0;width:1px;height:1px}
+.picks label:has(input:checked){background:var(--mark);border-color:var(--ink);font-weight:700}
+.picks label:has(input:focus-visible){outline:3px solid var(--ink);outline-offset:2px}
+.picks.big label{padding:12px 22px;font-size:1rem}
+.picks[aria-invalid="true"] label{border-color:var(--bad)}
+.hp{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.send{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding-top:26px}
+.err{color:var(--bad);font-family:var(--display);font-size:.92rem}
+.err:empty{display:none}
+.agree{font-size:.88rem;color:var(--muted);flex-basis:100%}
+
+aside.after{position:sticky;top:24px}
+aside.after h2{font-size:1.1rem;font-weight:800;margin-bottom:14px}
+.steps{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.steps li{position:relative;padding:16px 26px 14px 0;border-bottom:1px solid var(--rule)}
+.steps li::before{content:"";position:absolute;right:0;top:24px;width:12px;height:12px;background:var(--mark);border:2px solid var(--ink)}
+.steps b{display:block;font-family:var(--display);font-size:.98rem}
+.steps span{color:var(--muted);font-size:.95rem}
+.after .alt{margin-top:18px;font-size:.95rem;color:var(--muted)}
+.soc{display:inline-flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--display);font-size:.9rem;font-weight:500}
+.soc a:hover{background:var(--mark);text-decoration:none}
+
+.done{background:var(--sheet);box-shadow:var(--lift);padding:40px 36px;text-align:start}
+.done svg{width:44px;height:44px;margin-bottom:14px}
+.done h2{font-size:1.7rem;font-weight:800;margin-bottom:8px}
+.done h2 span{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .42em}
+.done p{color:var(--muted);font-size:1.05rem;max-width:34em}
+.done .ref{font-family:var(--display);font-weight:800;color:var(--ink);direction:ltr;unicode-bidi:isolate;letter-spacing:.05em}
+.done .row{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.done textarea{width:100%;min-height:180px;font:inherit;font-size:1rem;border:1px solid var(--rule);padding:10px 12px;background:var(--paper);margin-top:16px}
+.warn{background:#fff4c7;border:1px solid #e3c44a;padding:10px 14px;font-family:var(--display);font-size:.92rem;margin-top:14px}
+.copied{font-family:var(--display);font-size:.9rem;color:var(--ok)}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;gap:28px}
+  aside.after{position:static}
+}
+@media (max-width:600px){
+  .grid{grid-template-columns:1fr}
+  .sheet{padding:4px 18px 26px}
+  .done{padding:28px 20px}
+  .brand span{display:none}
+  .intro{padding:36px 0 26px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .hl{animation:mark 1s .3s var(--ease) both}
+  @keyframes mark{from{background-size:0% .42em}to{background-size:100% .42em}}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <a class="brand" href="index.html"><b>ورق</b><span>وكالة تسويق للكتب</span></a>
+    <a class="back" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>الرجوع للموقع</a>
+  </header>
+
+  <div class="intro">
+    <h1>اطلب <span class="hl">خدمة</span></h1>
+    <p>عبّ الطلب مرة وحدة، ويوصلنا مع كل تفاصيل كتابك. نراجعه ونتواصل معك.</p>
+  </div>
+
+  <div class="layout">
+    <main>
+      <form class="sheet" id="form" novalidate>
+        <fieldset class="part">
+          <legend><b>١</b><span>عنك</span></legend>
+          <div class="grid">
+            <div class="f full"><span class="lab" id="who-l">أنت</span>
+              <div class="picks big" id="who" role="radiogroup" aria-labelledby="who-l">
+                <label><input type="radio" name="who" value="كاتب" checked>كاتب</label>
+                <label><input type="radio" name="who" value="دار نشر">دار نشر</label>
+              </div>
+            </div>
+            <div class="f full"><label for="name" id="name-l">اسم الكاتب</label><input type="text" id="name" autocomplete="name" maxlength="120" required></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="part">
+          <legend><b>٢</b><span>كتابك</span></legend>
+          <div class="grid">
+            <div class="f full"><label for="book">عنوان الكتاب</label><input type="text" id="book" maxlength="200" required>
+              <p class="note" id="book-note" hidden>عندك أكثر من كتاب؟ اكتب الأول هنا والباقي في «تفاصيل».</p></div>
+            <div class="f"><label for="genre">نوع الكتاب</label><input type="text" id="genre" list="genres" maxlength="100" placeholder="رواية، تطوير ذات، أطفال…">
+              <datalist id="genres"><option value="رواية"><option value="قصص قصيرة"><option value="شعر"><option value="تطوير ذات"><option value="فكر وفلسفة"><option value="تاريخ"><option value="دين"><option value="أطفال"><option value="سيرة ذاتية"><option value="علمي"></datalist></div>
+            <div class="f"><label for="date">الموعد المهم <small>(اختياري)</small></label><input type="text" id="date" maxlength="100" placeholder="موعد الصدور أو المعرض"></div>
+            <div class="f full"><span class="lab" id="status-l">حالة الكتاب</span>
+              <div class="picks" id="status" role="radiogroup" aria-labelledby="status-l">
+                <label><input type="radio" name="status" value="صدر">صدر</label>
+                <label><input type="radio" name="status" value="يصدر قريبًا">يصدر قريبًا</label>
+                <label><input type="radio" name="status" value="مشارك في معرض">مشارك في معرض</label>
+              </div>
+            </div>
+            <div class="f"><label for="where">أين يُباع؟ <small>(اختياري)</small></label><input type="text" id="where" maxlength="200" placeholder="مكتبات، متاجر إلكترونية…"></div>
+            <div class="f"><label for="link">رابط الكتاب أو حسابك <small>(اختياري)</small></label><input type="url" id="link" dir="ltr" maxlength="300" placeholder="https://"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="part">
+          <legend><b>٣</b><span>الخدمة</span></legend>
+          <div class="grid">
+            <div class="f full"><span class="lab" id="picks-l">وش تحتاج؟ <small>(اختر وحدة أو أكثر)</small></span>
+              <div class="picks" id="picks" role="group" aria-labelledby="picks-l">
+                <label><input type="checkbox" value="حملة مسوقين">حملة مسوقين</label>
+                <label><input type="checkbox" value="معرض كتاب">معرض كتاب</label>
+                <label><input type="checkbox" value="أمسية">أمسية أو لقاء</label>
+                <label><input type="checkbox" value="بوسترات ومقاطع">بوسترات ومقاطع</label>
+                <label><input type="checkbox" value="حملة متكاملة">حملة متكاملة</label>
+              </div>
+            </div>
+            <div class="f"><label for="pkg">حملة جاهزة <small>(اختياري)</small></label>
+              <select id="pkg">
+                <option value="">ما حددت</option>
+                <optgroup label="للمؤلفين"><option>البداية</option><option>العدّ التنازلي</option><option>الإطلاق</option><option>الاقتباسات</option><option>الأمسية</option><option>معرض الكتاب</option></optgroup>
+                <optgroup label="لدور النشر"><option>إصدار جديد (دار نشر)</option><option>موسم الإصدارات (دار نشر)</option><option>جناح المعرض (دار نشر)</option><option>إحياء الكتب القديمة (دار نشر)</option><option>الاشتراك الشهري (دار نشر)</option></optgroup>
+              </select></div>
+            <div class="f"><label for="budget">الميزانية التقريبية <small>(اختياري)</small></label>
+              <select id="budget">
+                <option value="">ما حددت</option>
+                <option>أقل من 2,000 ريال</option><option>2,000 إلى 5,000 ريال</option><option>5,000 إلى 10,000 ريال</option><option>أكثر من 10,000 ريال</option><option>أبي اقتراحكم</option>
+              </select></div>
+            <div class="f full"><label for="notes">تفاصيل <small>(اختياري)</small></label><textarea id="notes" maxlength="2000" placeholder="هدفك من الحملة، جمهور الكتاب، أي شي تحب نعرفه"></textarea></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="part">
+          <legend><b>٤</b><span>التواصل</span></legend>
+          <div class="grid">
+            <div class="f"><label for="phone">الجوال <small>(واتساب)</small></label><input type="tel" id="phone" dir="ltr" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="05xxxxxxxx" required></div>
+            <div class="f"><label for="email">البريد <small>(اختياري)</small></label><input type="email" id="email" dir="ltr" autocomplete="email" maxlength="120"></div>
+          </div>
+        </fieldset>
+
+        <div class="hp" aria-hidden="true"><label for="web">اترك هذا الحقل فارغًا</label><input type="text" id="web" tabindex="-1" autocomplete="off"></div>
+        <div class="send">
+          <button type="submit" class="btn" id="go"><span class="spin" aria-hidden="true"></span><span class="t">أرسل الطلب</span></button>
+          <span class="err" id="err" role="alert"></span>
+          <p class="agree">إرسال الطلب ما يلزمك بشي. نراجعه ونرسل لك عرض سعر واضح قبل أي اتفاق.</p>
+        </div>
+      </form>
+
+      <section class="done" id="done" hidden tabindex="-1" aria-live="polite">
+        <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#ffd84a" stroke="#16223a" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="#16223a" stroke-width="2.6"/></svg>
+        <div id="ok">
+          <h2><span>وصلنا طلبك</span></h2>
+          <p>رقم الطلب <span class="ref" id="ref"></span>. نراجع طلب كتاب «<b id="ok-book"></b>» ونتواصل معك على الواتساب <span class="ref" id="ok-phone"></span>.</p>
+          <div class="row"><a class="btn" href="index.html">الرجوع للموقع</a><button type="button" class="btn line" id="again">طلب ثاني</button></div>
+        </div>
+        <div id="fb" hidden>
+          <h2><span>طلبك جاهز للإرسال</span></h2>
+          <p class="warn" id="warn" hidden></p>
+          <textarea id="text" readonly aria-label="نص الطلب"></textarea>
+          <div class="row"><a class="btn wa" id="wa" href="#" target="_blank" rel="noopener">إرسال بالواتساب</a><button type="button" class="btn line" id="copy">نسخ الطلب</button><span class="copied" id="copied" aria-live="polite"></span></div>
+          <p class="note" style="margin-top:12px">أو أرسله على حساباتنا: <span class="soc"><a href="https://www.instagram.com/Waraq_Agency" target="_blank" rel="noopener">إنستقرام</a><a href="https://www.tiktok.com/@Waraq_Agency" target="_blank" rel="noopener">تيك توك</a><a href="https://x.com/Waraq_Agency" target="_blank" rel="noopener">إكس</a></span></p>
+        </div>
+      </section>
+    </main>
+
+    <aside class="after" aria-labelledby="after-h">
+      <h2 id="after-h">بعد ما ترسل الطلب</h2>
+      <ol class="steps">
+        <li><b>نراجع طلبك</b><span>نقرأ تفاصيل الكتاب والخدمة اللي تحتاجها.</span></li>
+        <li><b>نتواصل معك</b><span>على الواتساب، ونرسل لك عرض سعر واضح.</span></li>
+        <li><b>نتفق ونبدأ</b><span>اتفاق مكتوب بالمطلوب والمدة، ثم نبدأ الحملة.</span></li>
+      </ol>
+      <p class="alt">عندك سؤال قبل الطلب؟ راسلنا على <span class="soc"><a href="https://www.instagram.com/Waraq_Agency" target="_blank" rel="noopener">إنستقرام</a><a href="https://x.com/Waraq_Agency" target="_blank" rel="noopener">إكس</a></span></p>
+    </aside>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  "use strict";
+  var CFG=window.WARAQ||{}, FB=CFG.firebase||{};
+  var WA=String(CFG.whatsapp||"").replace(/\D/g,""), hasWA=/^\d{8,15}$/.test(WA);
+  var hasDB=!!(FB.apiKey&&FB.projectId&&FB.appId);
+  var SDK="https://www.gstatic.com/firebasejs/10.12.2/";
+  function $(i){return document.getElementById(i)}
+  function each(l,f){Array.prototype.forEach.call(l,f)}
+  function val(i){return $(i).value.trim()}
+  function radio(n){var c=document.querySelector("input[name="+n+"]:checked");return c?c.value:""}
+  function checks(box){return Array.prototype.filter.call($(box).querySelectorAll("input"),function(c){return c.checked}).map(function(c){return c.value})}
+  function digits(s){return String(s||"").replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-0x660}).replace(/[۰-۹]/g,function(c){return c.charCodeAt(0)-0x6F0}).replace(/\D/g,"")}
+  if(!hasWA)$("wa").hidden=true;
+
+  /* who: label follows the choice */
+  function syncWho(){var pub=radio("who")==="دار نشر";$("name-l").textContent=pub?"اسم دار النشر":"اسم الكاتب";$("book-note").hidden=!pub}
+  each(document.querySelectorAll("input[name=who]"),function(r){r.addEventListener("change",syncWho)});
+
+  /* pre-fill from the package buttons on the home page */
+  var q=new URLSearchParams(location.search);
+  if(q.get("who")==="دار نشر"){document.querySelector("input[name=who][value='دار نشر']").checked=true}
+  if(q.get("pick"))each($("picks").querySelectorAll("input"),function(c){if(c.value===q.get("pick"))c.checked=true});
+  if(q.get("pkg"))each($("pkg").options,function(o){if(o.value===q.get("pkg"))$("pkg").value=o.value});
+  syncWho();
+
+  /* Firestore, loaded on first interaction */
+  var dbReady=null;
+  function db(){
+    if(!dbReady){
+      dbReady=Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js")]).then(function(m){return {fs:m[1],db:m[1].getFirestore(m[0].initializeApp(FB))}});
+      dbReady.catch(function(){dbReady=null});
+    }
+    return dbReady;
+  }
+  if(hasDB)$("form").addEventListener("focusin",function(){db().catch(function(){})},{once:true});
+  function save(data){
+    var work=db().then(function(x){
+      Object.keys(data).forEach(function(k){if(data[k]==="")delete data[k]});
+      data.state="new";data.createdAt=x.fs.serverTimestamp();data.source=(location.hostname||"local").slice(0,100);
+      return x.fs.addDoc(x.fs.collection(x.db,"requests"),data);
+    });
+    return Promise.race([work,new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},15000)})]);
+  }
+
+  /* validation */
+  function fail(field,msg){
+    $("err").textContent=msg;
+    var el=$(field); el.setAttribute("aria-invalid","true");
+    var focusable=el.matches("input,select,textarea")?el:el.querySelector("input");
+    focusable.focus(); el.scrollIntoView({block:"center",behavior:"smooth"});
+  }
+  each(document.querySelectorAll("#form input,#form select,#form textarea"),function(i){
+    i.addEventListener("input",function(){i.removeAttribute("aria-invalid");var g=i.closest(".picks");if(g)g.removeAttribute("aria-invalid")});
+    i.addEventListener("change",function(){var g=i.closest(".picks");if(g)g.removeAttribute("aria-invalid")});
+  });
+
+  function busy(on){var b=$("go");b.disabled=on;b.setAttribute("aria-busy",on);b.querySelector(".t").textContent=on?"جارٍ الإرسال…":"أرسل الطلب"}
+  function show(okMode,d,ref,lines,warn){
+    $("form").hidden=true;$("done").hidden=false;
+    $("ok").hidden=!okMode;$("fb").hidden=okMode;
+    if(okMode){$("ref").textContent=ref;$("ok-book").textContent=d.book;$("ok-phone").textContent=d.phone}
+    else{$("text").value=lines.join("\n");if(hasWA)$("wa").href="https://wa.me/"+WA+"?text="+encodeURIComponent(lines.join("\n"));$("warn").hidden=!warn;$("warn").textContent=warn||""}
+    $("done").focus({preventScroll:true});window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  $("form").addEventListener("submit",function(e){
+    e.preventDefault();
+    $("err").textContent="";each(document.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});
+    if(val("web"))return;
+    var who=radio("who"), picks=checks("picks"), phone=digits(val("phone")), email=val("email"), link=val("link");
+    if(!val("name"))return fail("name",who==="دار نشر"?"اكتب اسم دار النشر.":"اكتب اسم الكاتب.");
+    if(!val("book"))return fail("book","اكتب عنوان الكتاب.");
+    if(!picks.length)return fail("picks","اختر خدمة وحدة على الأقل من «وش تحتاج؟».");
+    if(phone.length<9||phone.length>15)return fail("phone","اكتب رقم جوال صحيح نتواصل معك عليه، مثل 05xxxxxxxx.");
+    if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail("email","البريد غير صحيح. صحّحه أو اتركه فارغًا.");
+    if(link&&!/^https?:\/\/\S+\.\S+/.test(link))return fail("link","الرابط لازم يبدأ بـ https:// أو اتركه فارغًا.");
+    var d={name:val("name"),who:who,phone:phone,email:email,book:val("book"),genre:val("genre"),status:radio("status"),date:val("date"),
+      where:val("where"),link:link,picks:picks,pkg:$("pkg").value,budget:$("budget").value,notes:val("notes")};
+    var t=["طلب خدمة من موقع وكالة ورق","",(who==="دار نشر"?"دار النشر: ":"الكاتب: ")+d.name,"الكتاب: "+d.book];
+    [["النوع",d.genre],["حالة الكتاب",d.status],["الموعد",d.date],["يُباع في",d.where],["الرابط",d.link]].forEach(function(x){if(x[1])t.push(x[0]+": "+x[1])});
+    t.push("المطلوب: "+picks.join("، "));
+    if(d.pkg)t.push("الحملة الجاهزة: "+d.pkg);
+    if(d.budget)t.push("الميزانية: "+d.budget);
+    t.push("الجوال: "+val("phone"));if(email)t.push("البريد: "+email);
+    if(d.notes)t.push("","التفاصيل:",d.notes);
+    if(!hasDB){show(false,d,"",t);return}
+    busy(true);
+    save(Object.assign({},d)).then(function(ref){busy(false);show(true,d,ref.id.slice(0,6).toUpperCase(),t)},
+      function(err){busy(false);if(window.console)console.warn("Firestore:",err);
+        show(false,d,"",t,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
+  });
+
+  $("again").addEventListener("click",function(){$("form").reset();syncWho();$("done").hidden=true;$("form").hidden=false;$("name").focus()});
+  $("copy").addEventListener("click",function(){
+    var ta=$("text");
+    function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}
+    try{navigator.clipboard.writeText(ta.value).then(function(){$("copied").textContent="تم النسخ."},man)}catch(e){man()}
+  });
+})();
+</script>
+</body>
+</html>
