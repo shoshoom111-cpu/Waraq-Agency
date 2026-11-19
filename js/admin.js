@@ -279,7 +279,7 @@ const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("t
   L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name")];
 const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"), S("description", "وصف الصفحة في نتائج البحث", "area")];
 
-const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"]];
+const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"]];
 const FTN = Object.fromEntries(FTYPES);
 const CORE_NAMES = { who:"الصفة (كاتب / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
 const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("agree", "النص تحت زر الإرسال", "area"),
@@ -341,6 +341,23 @@ function homePanel(D) {
 }
 
 /* ---- request form panel ---- */
+/* «متى يظهر هذا الحقل؟»: f.when={f: id حقل الاختيار, o: [ids الخيارات]} */
+function whenSources(D, f) { return reqFields(D).filter(x => x !== f && WC.CHOICE[x.type] && Array.isArray(x.options)); }
+function whenNames(D, f) {
+  const src = f.when && reqFields(D).find(x => x.id === f.when.f); if (!src) return [];
+  return src.options.filter(o => o && (f.when.o || []).includes(o.id)).map(o => o.t);
+}
+function whenBlock(f, base, D) {
+  if (WC.LOCKED[f.key]) return "";
+  const srcs = whenSources(D, f), w = f.when || {}, src = srcs.find(x => x.id === w.f);
+  if (src) src.options.forEach(o => { if (o && !o.id) o.id = uid("o"); });
+  const list = src ? src.options.filter(o => o && o.t && !/^#/.test(o.t)) : [], on = w.o || [];
+  return `<div class="lst when"><h4>متى يظهر هذا الحقل؟</h4>
+    <div class="fld"><label for="wf-${f.id}">يظهر</label><select id="wf-${f.id}" data-wsrc="${base}"><option value="">دايمًا</option>${srcs.map(x => `<option value="${esc(x.id)}"${src === x ? " selected" : ""}>بس لما العميل يختار من «${esc(x.label || "حقل")}»</option>`).join("")}</select></div>
+    ${src ? `<div class="whenopts" role="group" aria-label="الخيارات اللي تظهره">${list.map(o => `<label class="chk"><input type="checkbox" data-wopt="${base}" value="${esc(o.id)}"${on.includes(o.id) ? " checked" : ""}>${esc(o.t)}${o.hidden ? " (مخفي)" : ""}</label>`).join("")}</div>
+      <p class="hint">${on.length ? "يطلع تحت اختيار العميل، ولو شال الاختيار يختفي وما يترسل." : "اختاري خيار واحد على الأقل، وإلا الحقل ما يطلع أبدًا."}</p>` : ""}
+  </div>`;
+}
 function fieldEditor(f, base, pi, parts) {
   const core = WC.CORE[f.key], locked = WC.LOCKED[f.key];
   const typeRow = core ? `<p class="hint" style="margin:-4px 0 10px">نوعه: ${esc(FTN[f.type] || f.type)}. حقل أساسي${f.key === "name" || f.key === "book" ? "، تستخدمه «الموافقة» في لوحة المسوقين" : ""}.</p>`
@@ -357,7 +374,8 @@ function fieldEditor(f, base, pi, parts) {
     optsHTML +
     `<div class="two">${["textarea", "radio", "checks"].includes(f.type) ? "<span></span>" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)}
       <div class="fld"><label for="mv-${f.id}">نقله لقسم ثاني</label><select id="mv-${f.id}" data-move="${pi}" data-fid="${f.id}">${parts.map((p, j) => `<option value="${j}"${j === pi ? " selected" : ""}>${esc(p.title || "قسم " + toAr(j + 1))}</option>`).join("")}</select></div></div>` +
-    (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", "إلزامي", "bool"), base, f));
+    (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", f.when && f.when.f ? "إلزامي (لما يظهر)" : "إلزامي", "bool"), base, f)) +
+    whenBlock(f, base, { parts });
 }
 function requestPanel(D) {
   const open = OPEN.request;
@@ -369,7 +387,8 @@ function requestPanel(D) {
     const flds = p.fields.map((f, j) => {
       const fk = "fld:" + f.id, lock = WC.LOCKED[f.key];
       const toDash = Array.isArray(f.options) && f.options.some(o => o && o.dash && !o.hidden);
-      const tags = `<span class="tag">${esc(FTN[f.type] || f.type)}</span>${toDash ? '<span class="tag lock">← لوحة المسوقين</span>' : ""}${lock ? '<span class="tag lock">أساسي</span>' : f.required ? '<span class="tag">إلزامي</span>' : ""}`;
+      const wn = whenNames(D, f);
+      const tags = `<span class="tag">${esc(FTN[f.type] || f.type)}</span>${wn.length ? `<span class="tag">يظهر مع: ${esc(wn.join("، "))}</span>` : f.when && f.when.f ? '<span class="tag">مشروط بدون خيار</span>' : ""}${toDash ? '<span class="tag lock">← لوحة المسوقين</span>' : ""}${lock ? '<span class="tag lock">أساسي</span>' : f.required ? '<span class="tag">إلزامي</span>' : ""}`;
       return `<details class="card${f.hidden ? " off" : ""}" data-k="${fk}" data-fid="${f.id}"${open[fk] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(f.label || "حقل")}</span></span>${tags}${ops("parts." + i + ".fields", j, p.fields.length, f, { noHide: lock, noDel: lock })}</summary>
         <div class="body">${fieldEditor(f, "parts." + i + ".fields." + j, i, D.parts)}</div></details>`;
     }).join("");
@@ -465,6 +484,17 @@ panel.addEventListener("input", (e) => {
 });
 panel.addEventListener("change", (e) => {
   const el = e.target; if (!CUR) return;
+  if (el.dataset.wsrc != null) {   // which choice field controls this field
+    pushUndo(); const f = getP(CUR.data, el.dataset.wsrc);
+    if (el.value) f.when = { f: el.value, o: [] }; else delete f.when;
+    changed(true); return;
+  }
+  if (el.dataset.wopt != null) {   // which options show it
+    pushUndo(); const f = getP(CUR.data, el.dataset.wopt);
+    f.when = f.when || { f: "", o: [] };
+    f.when.o = [...panel.querySelectorAll(`[data-wopt="${CSS.escape(el.dataset.wopt)}"]`)].filter(x => x.checked).map(x => x.value);
+    changed(true); return;
+  }
   if (el.dataset.move != null) {   // move field to another part
     pushUndo(); const from = +el.dataset.move, to = +el.value, P = CUR.data.parts;
     const k = P[from].fields.findIndex(f => f.id === el.dataset.fid); const [f] = P[from].fields.splice(k, 1); P[to].fields.push(f);

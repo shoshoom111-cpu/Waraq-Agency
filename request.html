@@ -70,7 +70,7 @@ fieldset.part:last-of-type{border-bottom:0}
 .full{grid-column:1/-1}
 .f label,.f .lab{display:block;font-family:var(--display);font-weight:700;font-size:.9rem;margin-bottom:6px}
 .f label small,.f .lab small{font-weight:500;color:var(--muted);font-size:.8rem}
-.f input[type=text],.f input[type=tel],.f input[type=email],.f input[type=url],.f select,.f textarea{width:100%;font:inherit;font-size:1.02rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px;transition:border-color .15s,background-color .15s}
+.f input[type=text],.f input[type=tel],.f input[type=email],.f input[type=url],.f input[type=number],.f input[type=date],.f select,.f textarea{width:100%;font:inherit;font-size:1.02rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px;transition:border-color .15s,background-color .15s}
 .f select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);background-position:left 18px center,left 12px center;background-size:6px 6px;background-repeat:no-repeat;padding-left:34px}
 .f input:hover,.f select:hover,.f textarea:hover{border-color:var(--muted)}
 .f input:focus,.f select:focus,.f textarea:focus{outline:0;border-color:var(--ink);background-color:var(--sheet)}
@@ -128,9 +128,15 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   .brand span{display:none}
   .intro{padding:36px 0 26px}
 }
+/* تفاصيل الخدمة: خانات تطلع بس لما العميل يختار الخدمة */
+.f.cond{position:relative;padding-inline-start:16px}
+.f.cond::before{content:"";position:absolute;inset-inline-start:0;top:4px;bottom:4px;width:1px;background:var(--ink);opacity:.35}
+.f.cond>.lab::after,.f.cond>label::after{content:"";display:inline-block;width:.5em;height:.5em;background:var(--mark);border:1px solid var(--ink);margin-inline-start:8px;vertical-align:.1em}
 @media (prefers-reduced-motion:no-preference){
   .hl{animation:mark 1s .3s var(--ease) both}
   @keyframes mark{from{background-size:0% .42em}to{background-size:100% .42em}}
+  .f.cond:not([hidden]){animation:condIn .3s var(--ease) both}
+  @keyframes condIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>

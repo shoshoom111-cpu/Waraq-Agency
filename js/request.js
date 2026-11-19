@@ -19,12 +19,31 @@ function choices(s){return opts(s).filter(function(x){return x.charAt(0)!=="#"})
 function digits(s){return String(s||"").replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-0x660}).replace(/[۰-۹]/g,function(c){return c.charCodeAt(0)-0x6F0}).replace(/\D/g,"")}
 function fields(){var out=[];vis(R.parts).forEach(function(p){vis(p.fields).forEach(function(f){out.push(f)})});return out}
 function locked(f){return LOCKED[f.key]}
+/* حقل مشروط: f.when={f: id حقل الاختيار, o: [ids الخيارات]}. يظهر بس لما العميل يختار وحدة منها. */
+function optList(f){return Array.isArray(f.options)?f.options.map(function(o,i){return o&&{id:o.id||("o"+i),t:String(o.t||"").trim(),hidden:o.hidden}}).filter(function(o){return o&&o.t&&!o.hidden&&o.t.charAt(0)!=="#"}):[]}
+function whenSrc(f){if(!f.when||!f.when.f||locked(f))return null;return fields().filter(function(x){return x.id===f.when.f&&x!==f})[0]||null}
+function whenTexts(f){var src=whenSrc(f),ids=(f.when&&f.when.o)||[];return src?optList(src).filter(function(o){return ids.indexOf(o.id)>-1}).map(function(o){return o.t}):[]}
+function pickedIn(src){var v=valueOf(src);return Array.isArray(v)?v:v?[v]:[]}
+/* يرجّع الخيار اللي أظهر الحقل، أو true لو الحقل عادي، أو false لو مخفي */
+function shownBy(f,depth){
+  var src=whenSrc(f); if(!src)return true;
+  if((depth||0)<5&&shownBy(src,(depth||0)+1)===false)return false;
+  var want=whenTexts(f), got=pickedIn(src).filter(function(t){return want.indexOf(t)>-1});
+  return got.length?got[0]:false;
+}
+function applyWhen(){
+  fields().forEach(function(f){
+    if(!whenSrc(f))return;
+    var box=document.querySelector('[data-field="'+f.id+'"]'); if(box)box.hidden=shownBy(f)===false;
+  });
+}
+document.addEventListener("change",function(e){if(e.target.closest&&e.target.closest("#parts"))applyWhen()});
 
 /* ---------- render ---------- */
 function fieldHTML(f,pi){
   var id="q-"+f.id, req=f.required||locked(f), lab=esc(f.label)+(req?'':' <small>(اختياري)</small>')+(f.hint?' <small>('+esc(f.hint)+')</small>':'');
   var full=f.width==="full"||f.type==="textarea"||f.type==="radio"||f.type==="checks";
-  var h='<div class="f'+(full?' full':'')+'" data-field="'+esc(f.id)+'" data-part="'+pi+'">';
+  var h='<div class="f'+(full?' full':'')+(f.when&&f.when.f?' cond':'')+'" data-field="'+esc(f.id)+'" data-part="'+pi+'">';
   if(f.type==="radio"||f.type==="checks"){
     var list=choices(f.options);
     h+='<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks'+(f.key==="who"?" big":"")+'" id="'+id+'" role="'+(f.type==="radio"?"radiogroup":"group")+'" aria-labelledby="'+id+'-l">'+
@@ -40,10 +59,10 @@ function fieldHTML(f,pi){
   }else if(f.type==="textarea"){
     h+='<label for="'+id+'">'+lab+'</label><textarea id="'+id+'" maxlength="2000" placeholder="'+esc(f.placeholder||"")+'"></textarea>';
   }else{
-    var t=f.type==="tel"?"tel":f.type==="email"?"email":f.type==="url"?"url":"text";
+    var t=f.type==="tel"?"tel":f.type==="email"?"email":f.type==="url"?"url":f.type==="number"?"number":f.type==="date"?"date":"text";
     var dl=t==="text"&&choices(f.options).length?"dl-"+f.id:"";
     h+='<label for="'+id+'"'+(f.key==="name"?' id="name-l"':'')+'>'+lab+'</label><input type="'+t+'" id="'+id+'"'+
-      (t==="tel"||t==="email"||t==="url"?' dir="ltr"':'')+(t==="tel"?' inputmode="tel" autocomplete="tel"':'')+(t==="email"?' autocomplete="email"':'')+(f.key==="name"?' autocomplete="name"':'')+
+      (t==="tel"||t==="email"||t==="url"?' dir="ltr"':'')+(t==="number"?' inputmode="numeric" min="0"':'')+(t==="tel"?' inputmode="tel" autocomplete="tel"':'')+(t==="email"?' autocomplete="email"':'')+(f.key==="name"?' autocomplete="name"':'')+
       ' maxlength="'+(t==="tel"?20:t==="url"?300:200)+'" placeholder="'+esc(f.placeholder||"")+'"'+(dl?' list="'+dl+'"':'')+'>'+
       (dl?'<datalist id="'+dl+'">'+choices(f.options).map(function(o){return '<option value="'+esc(o)+'">'}).join("")+'</datalist>':'');
   }
@@ -66,7 +85,7 @@ function render(r){
   $("after").hidden=!vis(R.after).length&&!R.afterTitle;
   $("ok-title").textContent=R.okTitle||"وصلنا طلبك";
   $("wa").hidden=!hasWA;
-  prefill(); syncWho();
+  prefill(); syncWho(); applyWhen();
   document.body.classList.remove("loading");
 }
 
@@ -147,6 +166,8 @@ $("form").addEventListener("submit",function(e){
   if($("web").value)return;
   var data={}, answers=[], lines=["طلب خدمة من موقع وكالة "+BRAND.name,""], bad=null;
   fields().some(function(f){
+    var by=shownBy(f); if(by===false)return false;
+    var lbl=by===true?f.label:by+" ← "+f.label;
     var v=valueOf(f), empty=Array.isArray(v)?!v.length:!v, req=f.required||locked(f);
     var shownLabel=f.key==="name"&&$("name-l")?$("name-l").textContent.replace(/\s*\(.*$/,"").trim():f.label;
     if(req&&empty){bad=[f,f.type==="checks"||f.type==="radio"?"اختر من «"+f.label+"».":"اكتب "+shownLabel+"."];return true}
@@ -155,16 +176,16 @@ $("form").addEventListener("submit",function(e){
     if(!empty&&f.type==="url"&&!/^https?:\/\/\S+\.\S+/.test(v)){bad=[f,"الرابط لازم يبدأ بـ https:// أو اتركه فارغًا."];return true}
     if(empty)return false;
     var shown=Array.isArray(v)?v.join("، "):v;
-    lines.push(f.label+": "+(f.type==="tel"?valueOf(f):shown));
+    lines.push(lbl+": "+(f.type==="tel"?valueOf(f):shown));
     if(CORE[f.key]&&!data.hasOwnProperty(f.key))data[f.key]=f.key==="picks"?(Array.isArray(v)?v:[v]):(Array.isArray(v)?v.join("، "):String(v)).slice(0,2000);
-    else answers.push({l:String(f.label).slice(0,120),v:String(shown).slice(0,2000)});
+    else answers.push({l:String(lbl).slice(0,120),v:String(shown).slice(0,2000)});
     return false;
   });
   if(bad)return fail(bad[0],bad[1]);
   if(answers.length)data.answers=answers.slice(0,40);
   // يروح للوحة المسوقين إذا اختار العميل خيارًا معلّمًا «يروح للوحة المسوقين»
   data.dash=fields().some(function(f){
-    if(!Array.isArray(f.options))return false;
+    if(!Array.isArray(f.options)||shownBy(f)===false)return false;
     var v=valueOf(f), picked=Array.isArray(v)?v:[v];
     return f.options.some(function(o){return o&&o.dash&&!o.hidden&&picked.indexOf(String(o.t).trim())>-1});
   });
@@ -174,7 +195,7 @@ $("form").addEventListener("submit",function(e){
   save(data,lines).then(function(ref){busy(false);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)},
     function(err){busy(false);if(window.console)console.warn("Firestore:",err);show(false,data,"",lines,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
-$("again").addEventListener("click",function(){$("form").reset();prefill();syncWho();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
+$("again").addEventListener("click",function(){$("form").reset();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
   var ta=$("text");
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}
