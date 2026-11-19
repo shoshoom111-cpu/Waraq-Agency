@@ -638,11 +638,31 @@ $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.cu
 const NOTIFY = F.doc(db, "siteSettings", "notify");
 const okEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const nmsg = (t, bad) => { $("ntf-msg").textContent = t; $("ntf-msg").className = "saved" + (bad ? " err" : ""); };
-async function loadSettings() { try { const s = await F.getDoc(NOTIFY); $("ntf").value = s.exists() ? (s.data().email || "") : ""; } catch {} }
+async function loadSettings() { try { const s = await F.getDoc(NOTIFY), d = s.exists() ? s.data() : {}; $("ntf").value = d.email || ""; $("wa-phone").value = d.waPhone || ""; $("wa-key").value = d.waKey || ""; } catch {} }
+/* WhatsApp alerts via CallMeBot: the request pages send a GET to this endpoint */
+const waDigits = (v) => String(v || "").replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/\D/g, "").replace(/^00/, "").replace(/^05(\d{8})$/, "9665$1");
+const wmsg = (t, bad) => { $("wa-msg").textContent = t; $("wa-msg").className = "saved" + (bad ? " err" : ""); };
+$("wa-save").addEventListener("click", async () => {
+  const ph = waDigits($("wa-phone").value), key = $("wa-key").value.trim();
+  if ((ph || key) && (ph.length < 10 || ph.length > 15)) return wmsg("اكتبي الرقم بالصيغة الدولية مثل 9665XXXXXXXX.", true);
+  if (ph && !key) return wmsg("اكتبي المفتاح (apikey) اللي وصلك من CallMeBot.", true);
+  $("wa-save").disabled = true; wmsg("");
+  try { await F.setDoc(NOTIFY, { waPhone: ph, waKey: key, updatedAt: F.serverTimestamp() }, { merge: true }); $("wa-phone").value = ph; wmsg(ph ? "انحفظ. اضغطي «إرسال رسالة تجربة»." : "انحفظ. تنبيهات الواتساب متوقفة."); }
+  catch (err) { wmsg("ما انحفظ: " + (err.code || err.message), true); } finally { $("wa-save").disabled = false; }
+});
+$("wa-test").addEventListener("click", async () => {
+  const ph = waDigits($("wa-phone").value), key = $("wa-key").value.trim();
+  if (!ph || !key) return wmsg("اكتبي الرقم والمفتاح واحفظيهم أول.", true);
+  $("wa-test").disabled = true; wmsg("جارٍ الإرسال…");
+  try {
+    await fetch("https://api.callmebot.com/whatsapp.php?phone=%2B" + ph + "&apikey=" + encodeURIComponent(key) + "&text=" + encodeURIComponent("تجربة تنبيهات وكالة ورق ✅\nإذا وصلتك هذي الرسالة، تنبيهات الطلبات بالواتساب شغالة."), { mode: "no-cors" });
+    wmsg("انرسلت. لو ما وصلتك خلال دقيقة، تأكدي من الرقم والمفتاح.");
+  } catch { wmsg("ما انرسلت. تأكدي من الاتصال.", true); } finally { $("wa-test").disabled = false; }
+});
 $("ntf-save").addEventListener("click", async () => {
   const v = $("ntf").value.trim(); if (v && !okEmail(v)) return nmsg("البريد غير صحيح.", true);
   $("ntf-save").disabled = true; nmsg("");
-  try { await F.setDoc(NOTIFY, { email: v, updatedAt: F.serverTimestamp() }); nmsg(v ? "انحفظ. اضغطي «إرسال إيميل تجربة»." : "انحفظ. التنبيهات متوقفة."); }
+  try { await F.setDoc(NOTIFY, { email: v, updatedAt: F.serverTimestamp() }, { merge: true }); nmsg(v ? "انحفظ. اضغطي «إرسال إيميل تجربة»." : "انحفظ. التنبيهات متوقفة."); }
   catch (err) { nmsg("ما انحفظ: " + (err.code || err.message), true); } finally { $("ntf-save").disabled = false; }
 });
 $("ntf-test").addEventListener("click", async () => {

@@ -292,6 +292,15 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="acts"><button class="btn sm" type="button" id="ntf-save">حفظ</button><button class="btn line sm" type="button" id="ntf-test">إرسال إيميل تجربة</button><span class="saved" id="ntf-msg" aria-live="polite"></span></div>
       <p class="hint"><b>أول مرة:</b> بعد الحفظ اضغطي «إرسال إيميل تجربة». يوصلك إيميل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>، اضغطيه مرة وحدة وبعدها تبدأ التنبيهات. شيّكي على البريد المزعج.</p>
     </section>
+    <section class="panelbox" aria-labelledby="wa-h">
+      <h2 id="wa-h"><span class="hlx">تنبيهات الطلبات بالواتساب</span></h2>
+      <p class="hint"><b>التفعيل (مرة وحدة من جوالك):</b> افتحي <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">صفحة CallMeBot</a>، واحفظي رقمهم المكتوب فيها بجوالك، وأرسلي له من واتسابك الرسالة اللي يطلبونها (<span dir="ltr">I allow callmebot to send me messages</span>). يردون عليك برسالة فيها <b dir="ltr">apikey</b>. اكتبي رقمك والمفتاح هنا.</p>
+      <div class="field"><label for="wa-phone">رقم جوالك (اللي فعّلتي منه)</label><input id="wa-phone" type="tel" dir="ltr" maxlength="20" placeholder="9665XXXXXXXX"></div>
+      <div class="field"><label for="wa-key">المفتاح (apikey)</label><input id="wa-key" type="text" dir="ltr" maxlength="40" autocomplete="off" placeholder="123456"></div>
+      <p class="hint">كل طلب جديد (خدمة أو انضمام مسوق) توصلك عنه رسالة واتساب فيها معلومات الطلب. امسحي الخانتين واحفظي لإيقافها.</p>
+      <div class="acts"><button class="btn sm" type="button" id="wa-save">حفظ</button><button class="btn line sm" type="button" id="wa-test">إرسال رسالة تجربة</button><span class="saved" id="wa-msg" aria-live="polite"></span></div>
+      <p class="hint">تنبيه: المفتاح يكون موجود في كود الموقع. لو جتك رسائل مزعجة، اطلبي مفتاح جديد من CallMeBot وحطيه هنا.</p>
+    </section>
     <section class="panelbox">
       <h2><span class="hlx">وين أعدّل الباقي؟</span></h2>
       <p class="hint" style="font-size:.88rem">رقم الواتساب، اسم الوكالة، الحسابات، وعنوان الموقع في محرّكات البحث: من «تعديل الصفحة الأساسية» ← «معلومات عامة».</p>

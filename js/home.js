@@ -178,9 +178,16 @@ function db(){
   }
   return dbReady;
 }
+/* تنبيه واتساب لجوال الوكالة عن طريق CallMeBot (الرقم والمفتاح من الإعدادات) */
+function waSend(d,subject,ls){
+  var ph=String(d.waPhone||"").replace(/\D/g,""), key=String(d.waKey||"").trim(); if(ph.length<10||!key)return;
+  var text=(subject+"\n\n"+ls.filter(function(l,i){return i>1||l}).join("\n")).slice(0,1500);
+  try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors"}).catch(function(){})}catch(e){}
+}
 function notify(x,subject,ls){
   return x.fs.getDoc(x.fs.doc(x.db,"siteSettings","notify")).then(function(s){
-    var em=s.exists()?String(s.data().email||"").trim():"";
+    var d=s.exists()?s.data():{}, em=String(d.email||"").trim();
+    waSend(d,subject,ls);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return;
     return fetch("https://formsubmit.co/ajax/"+em,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},
       body:JSON.stringify({_subject:subject,_template:"box",_captcha:"false",message:ls.join("\n")+"\n\nتفاصيل الطلب في صفحة طلبات الوكالة ولوحة المسوقين."})});
