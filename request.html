@@ -128,6 +128,21 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   .brand span{display:none}
   .intro{padding:36px 0 26px}
 }
+/* «+ أضف خدمة» */
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.srows{display:grid;gap:12px}
+.srow{border:1.5px solid var(--rule);background:var(--paper);padding:10px;display:grid;gap:10px}
+.srow:has(select:focus),.srow:has(textarea:focus){border-color:var(--ink)}
+.srow-top{display:flex;gap:8px;align-items:center}
+.srow-top select{flex:1}
+.srow textarea{min-height:84px}
+.srow select,.srow textarea{background-color:var(--sheet)!important}
+.srow-x{flex-shrink:0;width:40px;height:40px;border:1.5px solid var(--rule);background:var(--sheet);color:var(--ink);font-size:1.3rem;line-height:1;cursor:pointer}
+.srow-x:hover{border-color:var(--ink);background:#fff4c7}
+.addsvc{margin-top:12px;display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:.95rem;border:2px dashed var(--ink);background:transparent;color:var(--ink);padding:9px 18px;cursor:pointer}
+.addsvc span{font-size:1.2rem;line-height:1}
+.addsvc:hover:not(:disabled){background:var(--mark);border-style:solid}
+.addsvc:disabled{opacity:.45;cursor:not-allowed}
 /* تفاصيل الخدمة: خانات تطلع بس لما العميل يختار الخدمة */
 .f.cond{position:relative;padding-inline-start:16px}
 .f.cond::before{content:"";position:absolute;inset-inline-start:0;top:4px;bottom:4px;width:1px;background:var(--ink);opacity:.35}

@@ -93,7 +93,7 @@ var REQUEST={
 };
 
 /* خيارات حقول الاختيار تصير قائمة: كل خيار {t: النص, dash: يروح الطلب للوحة المسوقين لو اختاره, hidden} */
-var CHOICE={radio:1,checks:1,select:1};
+var CHOICE={radio:1,checks:1,select:1,svclist:1};
 function normField(f){
   if(CHOICE[f.type]&&!Array.isArray(f.options))f.options=String(f.options||"").split("\n").map(function(x){return x.trim()}).filter(Boolean).map(function(t){return {t:t}});
   if(!CHOICE[f.type]&&Array.isArray(f.options))f.options=f.options.map(function(o){return o.t}).join("\n");

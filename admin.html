@@ -78,6 +78,16 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .chk{display:flex;gap:8px;align-items:center;font-family:var(--display);font-size:.85rem;cursor:pointer;margin-bottom:12px}
 .chk input{width:16px;height:16px;accent-color:var(--ink)}
 .when{background:var(--paper);padding:10px 12px 4px;margin-top:6px}
+.exrow{display:grid;grid-template-columns:minmax(0,12rem) 9rem minmax(0,1fr) minmax(0,1fr);gap:8px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
+.exrow b{font-family:var(--display);font-size:.92rem}
+.exrow select,.exrow input{width:100%;font:inherit;font-size:.92rem;border:1.5px solid var(--rule);background:var(--paper);padding:6px 8px}
+.exrow .fixed{grid-column:2/-1;font-family:var(--display);font-size:.85rem;color:var(--muted)}
+@media (max-width:760px){.exrow{grid-template-columns:1fr 1fr}.exrow b{grid-column:1/-1}.exrow .fixed{grid-column:1/-1}}
+.routes{margin:14px 0 4px;border-top:1px solid var(--rule);padding-top:12px}
+.routes h4{font-family:var(--display);font-size:.88rem;margin:0 0 8px}
+.route{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 0;font-size:.95rem}
+.route b{font-family:var(--display);font-size:.88rem}
+.route .to{color:var(--muted);font-family:var(--display);font-size:.82rem}
 .whenopts{display:flex;flex-wrap:wrap;gap:0 18px}
 .whenopts .chk{margin-bottom:8px}
 .linkbtn{border:0;background:none;padding:0;margin-top:12px;font-family:var(--display);font-size:.85rem;color:var(--muted);text-decoration:underline;cursor:pointer}
@@ -300,6 +310,13 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <p class="hint">كل طلب جديد (خدمة أو انضمام مسوق) توصلك عنه رسالة واتساب فيها معلومات الطلب. امسحي الخانتين واحفظي لإيقافها.</p>
       <div class="acts"><button class="btn sm" type="button" id="wa-save">حفظ</button><button class="btn line sm" type="button" id="wa-test">إرسال رسالة تجربة</button><span class="saved" id="wa-msg" aria-live="polite"></span></div>
       <p class="hint">تنبيه: المفتاح يكون موجود في كود الموقع. لو جتك رسائل مزعجة، اطلبي مفتاح جديد من CallMeBot وحطيه هنا.</p>
+    </section>
+    <section class="panelbox" aria-labelledby="ex-h">
+      <h2 id="ex-h"><span class="hlx">منفذو الخدمات</span></h2>
+      <p class="hint">لكل خدمة: مين ينفذها. لما تضغطين «قبول» على طلب، كل خدمة فيه تروح لمنفذها: الإيميل ينرسل تلقائيًا، والواتساب يطلع لك زر يفتح المحادثة والرسالة جاهزة. «أنا» يعني ما يترسل لأحد.</p>
+      <div id="exec-list"></div>
+      <div class="acts"><button class="btn sm" type="button" id="exec-save">حفظ</button><span class="saved" id="exec-msg" aria-live="polite"></span></div>
+      <p class="hint">أول مرة ينرسل لإيميل منفذ، يوصله إيميل تفعيل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>. لازم يضغطه مرة وحدة عشان توصله الطلبات بعدها. الخدمات نفسها تضيفينها من «تعديل صفحة الطلبات».</p>
     </section>
     <section class="panelbox">
       <h2><span class="hlx">وين أعدّل الباقي؟</span></h2>

@@ -72,6 +72,7 @@ function route() {
   $("frame").classList.toggle("wide", v === "home" || v === "form");
   if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
   if (v === "history") loadHistory();
+  if (v === "settings") renderExec();
 }
 window.addEventListener("hashchange", route);
 
@@ -86,14 +87,72 @@ const fmt = new Intl.DateTimeFormat("ar-u-ca-gregory-nu-latn", { dateStyle: "med
 const when = (d) => d && d.toDate ? fmt.format(d.toDate()) : "الآن";
 const txt = (v) => Array.isArray(v) ? v.join("، ") : (v ?? "");
 const RQ = { requests: [], joinRequests: [] }, RQL = { requests: false, joinRequests: false };
+/* قبلتيه وانتقل للوحة المسوقين: يبقى «جديد» هناك عشان تكمّلين الموافقة فيها */
+const eff = (d) => d.agencyOk && d.state === "new" ? "approved" : d.state;
+let EXEC = {};
+const EXEC_DOC = () => F.doc(db, "siteSettings", "executors");
+async function loadExec() { try { const s = await F.getDoc(EXEC_DOC()); EXEC = s.exists() ? (s.data().map || {}) : {}; } catch { EXEC = {}; } }
+function dashNames() {
+  const D = ED.request && ED.request.data, out = new Set(); if (!D) return out;
+  reqFields(D).forEach(f => { if (Array.isArray(f.options)) f.options.forEach(o => { if (o && o.dash && o.t) out.add(String(o.t).trim()); }); });
+  return out;
+}
+/* كل خدمة في الطلب ومين ينفذها */
+function routesOf(d) {
+  const dn = dashNames(), seen = new Set(), out = [];
+  const add = (name, det) => { name = String(name || "").trim(); if (!name || seen.has(name)) return; seen.add(name);
+    const e = EXEC[name] || {}, kind = dn.has(name) ? "dash" : (e.kind || "me");
+    out.push({ name, det: det || "", kind, to: e.to || "", who: e.name || "" }); };
+  (d.services || []).forEach(x => add(x.s, x.d)); (d.picks || []).forEach(p => add(p, ""));
+  return out;
+}
+function execMsg(d, items) {
+  const head = ["طلب جديد من وكالة ورق", ""];
+  items.forEach(r => { head.push("الخدمة: " + r.name); if (r.det) head.push("المطلوب: " + r.det); head.push(""); });
+  [["الكتاب", d.book], ["النوع", d.genre], ["حالة الكتاب", d.status], ["الموعد", d.date], ["الرابط", d.link]].forEach(([l, v]) => { if (v) head.push(l + ": " + v); });
+  head.push("", "للتنسيق تواصل مع الوكالة.");
+  return head.join("\n");
+}
+const waNum = (v) => { let n = String(v || "").replace(/\D/g, ""); if (n.startsWith("00")) n = n.slice(2); if (n.startsWith("05") && n.length === 10) n = "966" + n.slice(1); return n; };
+function sendExecEmail(to, d, items) {
+  return fetch("https://formsubmit.co/ajax/" + to, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({ _subject: "طلب خدمة: " + items.map(r => r.name).join("، "), _template: "box", _captcha: "false", message: execMsg(d, items) }) })
+    .then(r => r.json().catch(() => ({}))).then(j => String(j.success) === "true" ? "ok" : /activat/i.test(j.message || "") ? "activate" : "fail").catch(() => "fail");
+}
+function routesHTML(d) {
+  const rs = routesOf(d); if (!rs.length) return "";
+  const done = eff(d) === "approved";
+  return `<div class="routes"><h4>${done ? "انرسل للمنفذين" : "لما تقبلين، كل خدمة تروح لـ"}</h4>` + rs.map(r => {
+    const where = r.kind === "dash" ? "لوحة المسوقين" : r.kind === "email" ? "إيميل" + (r.who ? ": " + r.who : "") : r.kind === "wa" ? "واتساب" + (r.who ? ": " + r.who : "") : "أنا (بدون إرسال)";
+    let act = "";
+    if (done && r.kind === "wa" && r.to) act = `<a class="btn sm" href="https://wa.me/${waNum(r.to)}?text=${encodeURIComponent(execMsg(d, [r]))}" target="_blank" rel="noopener">إرسال بالواتساب</a>`;
+    if (done && r.kind === "email" && r.to) act = `<button class="btn line sm" type="button" data-resend="${d.id}" data-svc="${esc(r.name)}">إعادة إرسال الإيميل</button>`;
+    if ((r.kind === "email" || r.kind === "wa") && !r.to) act = `<span class="to">ما فيه ${r.kind === "wa" ? "رقم" : "إيميل"} — حدديه في الإعدادات</span>`;
+    return `<div class="route"><b>${esc(r.name)}</b><span class="to">← ${esc(where)}</span>${act}</div>`;
+  }).join("") + `</div>`;
+}
+async function approve(d) {
+  await Promise.all([loadExec(), loadContent("request").catch(() => {})]);
+  const rs = routesOf(d), toDash = rs.some(r => r.kind === "dash"), byMail = {};
+  rs.filter(r => r.kind === "email" && r.to).forEach(r => (byMail[r.to] = byMail[r.to] || []).push(r));
+  await F.updateDoc(F.doc(db, "requests", d.id), toDash ? { dash: true, agencyOk: true, handledAt: F.serverTimestamp() } : { state: "approved", handledAt: F.serverTimestamp() });
+  const res = await Promise.all(Object.entries(byMail).map(([to, items]) => sendExecEmail(to, d, items)));
+  const wa = rs.filter(r => r.kind === "wa" && r.to).length, act = res.filter(x => x === "activate").length, bad = res.filter(x => x === "fail").length;
+  const parts = ["قُبل الطلب."];
+  if (toDash) parts.push("انتقل للوحة المسوقين.");
+  if (res.length) parts.push(`انرسل ${toAr(res.length - act - bad)} إيميل${act ? `، و${toAr(act)} يحتاج المنفذ يفعّل FormSubmit أول` : ""}${bad ? `، و${toAr(bad)} ما انرسل` : ""}.`);
+  if (wa) parts.push("اضغطي «إرسال بالواتساب» تحت كل خدمة.");
+  toast(parts.join(" "));
+}
 let col = "requests", filter = "all", query = "", openId = null;
 function startRequests() {
+  loadExec(); loadContent("request").then(() => { if (VIEW === "requests") renderReq(); }).catch(() => {});
   Object.keys(RQ).forEach(c => {
     const q = F.query(F.collection(db, c), F.orderBy("createdAt", "desc"), F.limit(1000));
     unsubs.push(F.onSnapshot(q, (snap) => {
       RQ[c] = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })); RQL[c] = true;
-      document.querySelector(`[data-count="${c}"]`).textContent = toAr(RQ[c].filter(x => x.state === "new").length);
-      const n = RQ.requests.filter(x => x.state === "new").length + RQ.joinRequests.filter(x => x.state === "new").length;
+      document.querySelector(`[data-count="${c}"]`).textContent = toAr(RQ[c].filter(x => eff(x) === "new").length);
+      const n = RQ.requests.filter(x => eff(x) === "new").length + RQ.joinRequests.filter(x => x.state === "new").length;
       $("nav-new").hidden = !n; $("nav-new").textContent = toAr(n);
       if (c === col) renderReq();
     }, (err) => {
@@ -111,12 +170,12 @@ function selectTab(b) { document.querySelectorAll(".tabs button").forEach(x => {
 $("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderReq(); });
 $("chips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; openId = null; renderReq(); });
 function matches(d) {
-  if (filter !== "all" && d.state !== filter) return false;
+  if (filter !== "all" && eff(d) !== filter) return false;
   if (!query) return true;
   return JSON.stringify(Object.values(d)).toLowerCase().includes(query);
 }
 function summary(d) {
-  return col === "requests" ? [d.dash === false ? "" : "لوحة المسوقين", d.who, d.book && "«" + d.book + "»", txt(d.picks)].filter(Boolean).join(" · ")
+  return col === "requests" ? [d.dash === true ? "لوحة المسوقين" : "", d.who, d.book && "«" + d.book + "»", txt([...(d.services || []).map(x => x.s), ...(d.picks || [])])].filter(Boolean).join(" · ")
     : [d.handle, txt(d.platforms), d.price && d.price + " ريال"].filter(Boolean).join(" · ");
 }
 function contactLinks(d) {
@@ -132,26 +191,27 @@ function contactLinks(d) {
   return out;
 }
 function rows(d) {
-  return [...RF[col].filter(([k]) => txt(d[k]) !== ""), ...(d.answers || []).map(a => [null, a.l, a.v])]
+  return [...RF[col].filter(([k]) => txt(d[k]) !== ""), ...(d.services || []).map(x => [null, "خدمة: " + x.s, x.d || "—"]), ...(d.answers || []).map(a => [null, a.l, a.v])]
     .map(r => r[0] === null ? [r[1], r[2]] : [r[1], txt(d[r[0]])]);
 }
 function reqDetail(d) {
-  const toDash = col === "joinRequests" || d.dash !== false;
-  const decide = d.state === "new"
-    ? (toDash ? `<a class="btn sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">الموافقة من لوحة المسوقين</a>` : `<button class="btn sm" type="button" data-accept="${d.id}">قبول</button>`) + `<button class="btn danger sm" type="button" data-reject="${d.id}">رفض</button>`
-    : `<button class="btn danger sm" type="button" data-del="${d.id}">حذف</button>`;
-  return `<div class="detail" id="d-${d.id}"><dl><dt>التاريخ</dt><dd class="num">${esc(when(d.createdAt))}</dd><dt>الحالة</dt><dd>${esc(SNAME[d.state] || d.state || "")}</dd>${col === "requests" ? `<dt>يروح لـ</dt><dd>${d.dash === false ? "صفحة الوكالة فقط" : "لوحة المسوقين وصفحة الوكالة"}</dd>` : ""}
+  const st = col === "requests" ? eff(d) : d.state;
+  const decide = st === "new"
+    ? (col === "joinRequests" ? `<a class="btn sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">الموافقة من لوحة المسوقين</a>` : `<button class="btn sm" type="button" data-accept="${d.id}">قبول</button>`) + `<button class="btn danger sm" type="button" data-reject="${d.id}">رفض</button>`
+    : (d.agencyOk && d.state === "new" ? `<a class="btn line sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">كمّلي في لوحة المسوقين</a>` : "") + `<button class="btn danger sm" type="button" data-del="${d.id}">حذف</button>`;
+  return `<div class="detail" id="d-${d.id}"><dl><dt>التاريخ</dt><dd class="num">${esc(when(d.createdAt))}</dd><dt>الحالة</dt><dd>${esc(SNAME[st] || st || "")}${d.agencyOk && d.state === "new" ? " · بانتظار لوحة المسوقين" : ""}</dd>
     ${rows(d).map(([l, v]) => `<dt>${esc(l)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <div class="side"><div class="acts">${contactLinks(d)}<button class="btn line sm" type="button" data-copy="${d.id}">نسخ الطلب</button></div>
       <div class="field"><label for="nt-${d.id}">ملاحظة داخلية <small>(تظهر في لوحة المسوقين بعد)</small></label><textarea id="nt-${d.id}" maxlength="2000" placeholder="عرض السعر، موعد المكالمة…">${esc(d.adminNote || "")}</textarea></div>
       <div class="acts"><button class="btn sm" type="button" data-save="${d.id}">حفظ الملاحظة</button><span class="saved" aria-live="polite"></span></div>
+      ${col === "requests" ? routesHTML(d) : ""}
       <div class="acts" style="margin-top:16px">${decide}</div></div></div>`;
 }
 function reqEmpty(h, p) { $("loading").hidden = true; $("list").innerHTML = ""; $("empty").hidden = false; $("empty-h").textContent = h; $("empty-p").textContent = p; }
 function renderReq() {
   const all = RQ[col];
   const chip = (key, label, n) => `<button type="button" data-f="${key}" aria-pressed="${filter === key}">${label} <span class="num">${toAr(n)}</span></button>`;
-  $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => d.state === k).length)).join("");
+  $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => (col === "requests" ? eff(d) : d.state) === k).length)).join("");
   if (!RQL[col]) { $("loading").hidden = false; $("list").innerHTML = ""; $("empty").hidden = true; return; }
   $("loading").hidden = true;
   const items = all.filter(matches);
@@ -159,7 +219,7 @@ function renderReq() {
   if (!items.length) return reqEmpty("ما فيه نتائج", "غيّري الكلمة أو الحالة المختارة.");
   $("empty").hidden = true;
   $("list").innerHTML = items.map(d => `<li class="item${openId === d.id ? " open" : ""}"><button class="row" type="button" data-open="${d.id}" aria-expanded="${openId === d.id}" aria-controls="d-${d.id}">
-    <span class="nm">${esc(d.name || "بدون اسم")}</span><span class="sm">${esc(summary(d))}</span><span class="pill" data-s="${esc(d.state || "")}">${esc(SNAME[d.state] || "—")}</span><span class="dt num">${esc(when(d.createdAt))}</span>
+    <span class="nm">${esc(d.name || "بدون اسم")}</span><span class="sm">${esc(summary(d))}</span><span class="pill" data-s="${esc((col === "requests" ? eff(d) : d.state) || "")}">${esc(SNAME[col === "requests" ? eff(d) : d.state] || "—")}</span><span class="dt num">${esc(when(d.createdAt))}</span>
     </button>${openId === d.id ? reqDetail(d) : ""}</li>`).join("");
 }
 $("list").addEventListener("click", async (e) => {
@@ -170,7 +230,12 @@ $("list").addEventListener("click", async (e) => {
     try { await F.updateDoc(F.doc(db, col, id), { adminNote: $("nt-" + id).value.trim() }); m.className = "saved"; m.textContent = "تم الحفظ."; }
     catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { s.disabled = false; } return; }
   const ac = e.target.closest("[data-accept]");
-  if (ac) { try { await F.updateDoc(F.doc(db, col, ac.dataset.accept), { state: "approved", handledAt: F.serverTimestamp() }); toast("قُبل الطلب."); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } return; }
+  if (ac) { const d = RQ[col].find(x => x.id === ac.dataset.accept); ac.disabled = true;
+    try { await approve(d); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } finally { ac.disabled = false; } return; }
+  const rs = e.target.closest("[data-resend]");
+  if (rs) { const d = RQ[col].find(x => x.id === rs.dataset.resend), r = routesOf(d).find(x => x.name === rs.dataset.svc); if (!r) return;
+    rs.disabled = true; const res = await sendExecEmail(r.to, d, [r]); rs.disabled = false;
+    toast(res === "ok" ? "انرسل." : res === "activate" ? "المنفذ لازم يفعّل FormSubmit من الإيميل اللي وصله أول." : "ما انرسل. تأكدي من الإيميل والاتصال."); return; }
   const rj = e.target.closest("[data-reject]");
   if (rj) { if (!arm(rj, "اضغطي «رفض» مرة ثانية للتأكيد.")) return;
     try { await F.updateDoc(F.doc(db, col, rj.dataset.reject), { state: "rejected", handledAt: F.serverTimestamp() }); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } return; }
@@ -280,7 +345,7 @@ const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("t
   L("links", "أزرار في الشريط العلوي", [S("text", "نص الزر", "text", { title: true }), S("url", "الرابط", "text", { ltr: true, hint: "رابط كامل يبدأ بـ https:// أو اسم صفحة" })], { text: "زر جديد", url: "https://" }, "text")];
 const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"), S("description", "وصف الصفحة في نتائج البحث", "area")];
 
-const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"]];
+const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"],["svclist","خدمات يضيفها العميل (+ أضف خدمة)"]];
 const FTN = Object.fromEntries(FTYPES);
 const CORE_NAMES = { who:"الصفة (كاتب / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
 const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("agree", "النص تحت زر الإرسال", "area"),
@@ -371,16 +436,20 @@ function fieldEditor(f, base, pi, parts) {
   const typeRow = core ? `<p class="hint" style="margin:-4px 0 10px">نوعه: ${esc(FTN[f.type] || f.type)}. حقل أساسي${f.key === "name" || f.key === "book" ? "، تستخدمه «الموافقة» في لوحة المسوقين" : ""}.</p>`
     : inputHTML(S("type", "نوع الحقل", "select", { opts: FTYPES, re: true }), base, f);
   const isChoice = !!WC.CHOICE[f.type];
-  const optsHTML = isChoice
+  const optsHTML = f.type === "svclist"
+    ? listHTML(L("options", "الخدمات اللي يختار منها العميل", [S("t", "اسم الخدمة", "text", { title: true }), S("dash", "هذي حملة المسوقين: تنتقل للوحة المسوقين لما تقبلين الطلب", "bool")], { t: "خدمة جديدة" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : []) +
+      inputHTML(S("addText", "نص زر الإضافة", "text", { hint: "فاضي = «أضف خدمة»" }), base, f) +
+      `<p class="hint">مين ينفذ كل خدمة تحددينه من «الإعدادات» ← منفذو الخدمات.</p>`
+    : isChoice
     ? listHTML(L("options", "الخيارات" + (f.type === "select" ? " (خيار يبدأ بـ # = عنوان مجموعة)" : ""),
-        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين", "bool"), S("sub", "", "subs")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
+        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين بعد ما تقبلينه", "bool"), S("sub", "", "subs")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
     : f.type === "text" ? inputHTML(S("options", "اقتراحات تطلع للعميل", "area", { hint: "اختياري، كل سطر اقتراح", rows: 3 }), base, f) : "";
   return inputHTML(S("label", "اسم الحقل", "text", { title: true }), base, f) +
     (f.key === "name" ? inputHTML(S("altLabel", "اسمه لما يختار الخيار الثاني في «أنت»", "text", { hint: "مثل: اسم دار النشر" }), base, f) : "") +
     typeRow + inputHTML(S("hint", "ملاحظة صغيرة جنب الاسم"), base, f) +
-    (["radio", "checks"].includes(f.type) ? "" : inputHTML(S("placeholder", "النص الرمادي داخل الخانة"), base, f)) +
+    (["radio", "checks"].includes(f.type) ? "" : inputHTML(S("placeholder", f.type === "svclist" ? "النص الرمادي داخل مربع التفاصيل" : "النص الرمادي داخل الخانة"), base, f)) +
     optsHTML +
-    `<div class="two">${["textarea", "radio", "checks"].includes(f.type) ? "<span></span>" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)}
+    `<div class="two">${["textarea", "radio", "checks", "svclist"].includes(f.type) ? "<span></span>" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)}
       <div class="fld"><label for="mv-${f.id}">نقله لقسم ثاني</label><select id="mv-${f.id}" data-move="${pi}" data-fid="${f.id}">${parts.map((p, j) => `<option value="${j}"${j === pi ? " selected" : ""}>${esc(p.title || "قسم " + toAr(j + 1))}</option>`).join("")}</select></div></div>` +
     (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", f.when && f.when.f ? "إلزامي (لما يظهر)" : "إلزامي", "bool"), base, f));
 }
@@ -636,6 +705,47 @@ $("modal-close").addEventListener("click", closeModal);
 $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
 
 /* =============== settings =============== */
+function serviceList() {
+  const D = ED.request.data, out = []; if (!D) return out;
+  reqFields(D).forEach(f => { if (!(f.key === "picks" || f.type === "svclist") || !Array.isArray(f.options)) return;
+    f.options.forEach(o => { const t = String((o && o.t) || "").trim(); if (!t || t.startsWith("#")) return;
+      const x = out.find(y => y.t === t); if (x) { x.dash = x.dash || !!o.dash; return; } out.push({ t, dash: !!o.dash, hidden: !!o.hidden }); }); });
+  return out;
+}
+const EXK = [["me", "أنا (بدون إرسال)"], ["email", "إيميل"], ["wa", "واتساب"]];
+async function renderExec() {
+  const box = $("exec-list"); box.innerHTML = '<div class="skel"></div>';
+  try { await Promise.all([loadContent("request"), loadExec()]); } catch (err) { box.innerHTML = `<p class="hint">تعذّر التحميل: ${esc(err.code || err.message)}</p>`; return; }
+  const list = serviceList();
+  if (!list.length) { box.innerHTML = '<p class="hint">ما فيه خدمات بعد. أضيفيها من «تعديل صفحة الطلبات».</p>'; return; }
+  box.innerHTML = list.map(s => {
+    const e = EXEC[s.t] || {}, k = e.kind || "me", nm = esc(s.t) + (s.hidden ? " <small>(مخفية)</small>" : "");
+    if (s.dash) return `<div class="exrow"><b>${nm}</b><span class="fixed">← لوحة المسوقين (تنتقل لها لما تقبلين الطلب)</span></div>`;
+    return `<div class="exrow" data-ex="${esc(s.t)}"><b>${nm}</b>
+      <select data-exk aria-label="منفذ ${esc(s.t)}">${EXK.map(([v, l]) => `<option value="${v}"${k === v ? " selected" : ""}>${l}</option>`).join("")}</select>
+      <input data-exn aria-label="اسم المنفذ" placeholder="اسم المنفذ (مثل: المصمم)" value="${esc(e.name || "")}"${k === "me" ? " hidden" : ""}>
+      <input data-ext aria-label="إيميل أو رقم المنفذ" dir="ltr" placeholder="${k === "wa" ? "9665XXXXXXXX" : "name@example.com"}" value="${esc(e.to || "")}"${k === "me" ? " hidden" : ""}></div>`;
+  }).join("");
+}
+$("exec-list").addEventListener("change", (e) => {
+  const sel = e.target.closest("[data-exk]"); if (!sel) return;
+  const row = sel.closest(".exrow"), k = sel.value;
+  row.querySelector("[data-exn]").hidden = k === "me"; const t = row.querySelector("[data-ext]"); t.hidden = k === "me";
+  t.placeholder = k === "wa" ? "9665XXXXXXXX" : "name@example.com"; if (k !== "me") t.focus();
+});
+$("exec-save").addEventListener("click", async () => {
+  const m = $("exec-msg"), map = {}; let bad = null;
+  document.querySelectorAll("#exec-list [data-ex]").forEach(row => {
+    const k = row.querySelector("[data-exk]").value, to = row.querySelector("[data-ext]").value.trim(), nm = row.querySelector("[data-exn]").value.trim();
+    if (k === "email" && !okEmail(to)) bad = bad || row.dataset.ex + ": الإيميل غير صحيح";
+    if (k === "wa" && waNum(to).length < 10) bad = bad || row.dataset.ex + ": اكتبي الرقم مثل 9665XXXXXXXX";
+    map[row.dataset.ex] = k === "me" ? { kind: "me" } : { kind: k, to: k === "wa" ? waNum(to) : to, name: nm.slice(0, 80) };
+  });
+  if (bad) { m.className = "saved err"; m.textContent = bad + "."; return; }
+  $("exec-save").disabled = true; m.textContent = "";
+  try { await F.setDoc(EXEC_DOC(), { map, updatedAt: F.serverTimestamp() }); EXEC = map; m.className = "saved"; m.textContent = "انحفظ."; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { $("exec-save").disabled = false; }
+});
 const NOTIFY = F.doc(db, "siteSettings", "notify");
 const okEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const nmsg = (t, bad) => { $("ntf-msg").textContent = t; $("ntf-msg").className = "saved" + (bad ? " err" : ""); };

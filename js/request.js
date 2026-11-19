@@ -45,8 +45,12 @@ document.addEventListener("change",function(e){if(e.target.closest&&e.target.clo
 /* ---------- render ---------- */
 function fieldHTML(f,pi){
   var id="q-"+f.id, req=f.required||locked(f), lab=esc(f.label)+(req?'':' <small>(اختياري)</small>')+(f.hint?' <small>('+esc(f.hint)+')</small>':'');
-  var full=f.width==="full"||f.type==="textarea"||f.type==="radio"||f.type==="checks";
+  var full=f.width==="full"||f.type==="textarea"||f.type==="radio"||f.type==="checks"||f.type==="svclist";
   var h='<div class="f'+(full?' full':'')+(f.when&&f.when.f?' cond':'')+'" data-field="'+esc(f.id)+'" data-part="'+pi+'">';
+  if(f.type==="svclist"){
+    return h+'<span class="lab" id="'+id+'-l">'+lab+'</span><div class="srows" id="'+id+'" data-svc="'+esc(f.id)+'" role="group" aria-labelledby="'+id+'-l"></div>'+
+      '<button type="button" class="addsvc" data-addsvc="'+esc(f.id)+'"><span aria-hidden="true">+</span> '+esc(f.addText||"أضف خدمة")+'</button></div>';
+  }
   if(f.type==="radio"||f.type==="checks"){
     var list=choices(f.options);
     h+='<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks'+(f.key==="who"?" big":"")+'" id="'+id+'" role="'+(f.type==="radio"?"radiogroup":"group")+'" aria-labelledby="'+id+'-l">'+
@@ -88,7 +92,7 @@ function render(r){
   $("after").hidden=!vis(R.after).length&&!R.afterTitle;
   $("ok-title").textContent=R.okTitle||"وصلنا طلبك";
   $("wa").hidden=!hasWA;
-  prefill(); syncWho(); applyWhen();
+  initRows(); prefill(); syncWho(); applyWhen();
   document.body.classList.remove("loading");
 }
 
@@ -111,17 +115,72 @@ function prefill(){
     if(f.type==="select"){var sel=$("q-"+f.id);each(sel.options,function(o){if(same(o.value))sel.value=o.value})}
     else each(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){if(same(c.value))c.checked=true});
   });
+  var pk=q.get("pick"), sv=fields().filter(function(f){return f.type==="svclist"})[0];
+  if(pk&&sv){
+    var hit=optList(sv).filter(function(o){return o.t===pk||o.t.indexOf(pk)===0||pk.indexOf(o.t)===0})[0], first=document.querySelector("#q-"+sv.id+" .srow select");
+    if(hit&&first&&!first.value){first.value=hit.id;syncRows(sv)}
+  }
+}
+
+/* ---------- «+ أضف خدمة»: كل سطر خدمة من القائمة ومربع يوصف فيه وش يبي ---------- */
+var MAXROWS=10;
+function svcField(id){return fields().filter(function(f){return f.id===id})[0]}
+function addRow(f,pickId){
+  var box=$("q-"+f.id); if(!box||box.children.length>=MAXROWS)return null;
+  var rid="q-"+f.id+"-r"+(addRow.n=(addRow.n||0)+1), div=document.createElement("div");
+  div.className="srow";
+  div.innerHTML='<div class="srow-top"><label class="sr-only" for="'+rid+'-s">الخدمة</label><select id="'+rid+'-s" data-srow-sel><option value="">اختر الخدمة</option>'+
+    optList(f).map(function(o){return '<option value="'+esc(o.id)+'">'+esc(o.t)+'</option>'}).join("")+'</select>'+
+    '<button type="button" class="srow-x" data-srow-del aria-label="حذف هذي الخدمة"><span aria-hidden="true">×</span></button></div>'+
+    '<label class="sr-only" for="'+rid+'-d">تفاصيل الخدمة</label><textarea id="'+rid+'-d" data-srow-txt maxlength="1500" rows="3" placeholder="'+esc(f.placeholder||"وش تبي بالضبط في هذي الخدمة؟")+'" hidden></textarea>';
+  box.appendChild(div);
+  if(pickId)div.querySelector("select").value=pickId;
+  syncRows(f); return div;
+}
+function syncRows(f){
+  var box=$("q-"+f.id); if(!box)return;
+  var rows=box.querySelectorAll(".srow"), used={};
+  each(rows,function(r){var v=r.querySelector("select").value;if(v)used[v]=(used[v]||0)+1});
+  each(rows,function(r){
+    var sel=r.querySelector("select"), v=sel.value;
+    each(sel.options,function(o){if(o.value)o.disabled=o.value!==v&&!!used[o.value]});
+    r.querySelector("textarea").hidden=!v;
+    r.querySelector("[data-srow-del]").hidden=rows.length<2&&!v;
+  });
+  var add=document.querySelector('[data-addsvc="'+f.id+'"]');
+  if(add)add.disabled=rows.length>=MAXROWS||rows.length>=optList(f).length||Array.prototype.some.call(rows,function(r){return !r.querySelector("select").value});
+}
+function initRows(){fields().forEach(function(f){if(f.type==="svclist"){var b=$("q-"+f.id);if(b&&!b.children.length)addRow(f)}})}
+document.addEventListener("click",function(e){
+  var a=e.target.closest&&e.target.closest("[data-addsvc]");
+  if(a){var f=svcField(a.dataset.addsvc),r=f&&addRow(f);if(r)r.querySelector("select").focus();return}
+  var x=e.target.closest&&e.target.closest("[data-srow-del]");
+  if(x){var box=x.closest(".srows"),f2=svcField(box.dataset.svc);x.closest(".srow").remove();if(!box.children.length)addRow(f2);else syncRows(f2);var s=box.querySelector("select");if(s)s.focus()}
+});
+document.addEventListener("change",function(e){
+  if(!e.target.matches||!e.target.matches("[data-srow-sel]"))return;
+  var box=e.target.closest(".srows"),f=svcField(box.dataset.svc); syncRows(f);
+  var t=e.target.closest(".srow").querySelector("textarea"); if(e.target.value&&!t.value)t.focus();
+});
+function svcValue(f){
+  var opts=optList(f), out=[]; out.bad=null;
+  each(document.querySelectorAll("#q-"+f.id+" .srow"),function(r){
+    var id=r.querySelector("select").value, d=r.querySelector("textarea").value.trim(), o=opts.filter(function(x){return x.id===id})[0];
+    if(o)out.push({id:o.id,s:o.t,d:d.slice(0,1500)}); else if(d&&!out.bad)out.bad=r;
+  });
+  return out;
 }
 
 /* ---------- read answers ---------- */
 function valueOf(f){
+  if(f.type==="svclist")return svcValue(f);
   if(f.type==="radio"){var c=document.querySelector('input[name="q-'+f.id+'"]:checked');return c?c.value:""}
   if(f.type==="checks")return Array.prototype.filter.call(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){return c.checked}).map(function(c){return c.value});
   var el=$("q-"+f.id);return el?el.value.trim():"";
 }
 function fail(f,msg){
   $("err").textContent=msg;
-  var box=document.querySelector('[data-field="'+f.id+'"]'), el=$("q-"+f.id)||box.querySelector("input");
+  var box=document.querySelector('[data-field="'+f.id+'"]'), el=f.type==="svclist"?(box.querySelector(".srow select")||box):$("q-"+f.id)||box.querySelector("input");
   (el.closest(".picks")||el).setAttribute("aria-invalid","true");
   el.focus(); box.scrollIntoView({block:"center",behavior:"smooth"});
 }
@@ -178,6 +237,13 @@ $("form").addEventListener("submit",function(e){
   fields().some(function(f){
     var by=shownBy(f); if(by===false)return false;
     var lbl=by===true?f.label:by+" ← "+f.label;
+    if(f.type==="svclist"){
+      var sv=svcValue(f);
+      if(sv.bad){bad=[f,"اختر الخدمة من القائمة، أو احذف السطر."];return true}
+      if((f.required)&&!sv.length){bad=[f,"أضف خدمة وحدة على الأقل."];return true}
+      if(sv.length){data.services=(data.services||[]).concat(sv).slice(0,10);lines.push(lbl+":");sv.forEach(function(x){lines.push("- "+x.s+(x.d?": "+x.d:""))})}
+      return false;
+    }
     var v=valueOf(f), empty=Array.isArray(v)?!v.length:!v, req=f.required||locked(f);
     var shownLabel=f.key==="name"&&$("name-l")?$("name-l").textContent.replace(/\s*\(.*$/,"").trim():f.label;
     if(req&&empty){bad=[f,f.type==="checks"||f.type==="radio"?"اختر من «"+f.label+"».":"اكتب "+shownLabel+"."];return true}
@@ -193,19 +259,14 @@ $("form").addEventListener("submit",function(e){
   });
   if(bad)return fail(bad[0],bad[1]);
   if(answers.length)data.answers=answers.slice(0,40);
-  // يروح للوحة المسوقين إذا اختار العميل خيارًا معلّمًا «يروح للوحة المسوقين»
-  data.dash=fields().some(function(f){
-    if(!Array.isArray(f.options)||shownBy(f)===false)return false;
-    var v=valueOf(f), picked=Array.isArray(v)?v:[v];
-    return f.options.some(function(o){return o&&o.dash&&!o.hidden&&picked.indexOf(String(o.t).trim())>-1});
-  });
-  if(data.dash)lines.push("","يروح للوحة المسوقين");
+  // الطلب يروح للوحة المسوقين بعد ما توافق عليه الوكالة من صفحة الطلبات
+  data.dash=false;
   if(!hasDB){show(false,data,"",lines);return}
   busy(true);
   save(data,lines).then(function(ref){busy(false);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)},
     function(err){busy(false);if(window.console)console.warn("Firestore:",err);show(false,data,"",lines,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
-$("again").addEventListener("click",function(){$("form").reset();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
+$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});initRows();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
   var ta=$("text");
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}
