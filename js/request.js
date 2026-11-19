@@ -12,7 +12,7 @@ var AR="٠١٢٣٤٥٦٧٨٩";
 function $(i){return document.getElementById(i)}
 function each(l,f){Array.prototype.forEach.call(l,f)}
 function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function ar(n){return String(n).replace(/\d/g,function(d){return AR[d]})}
+function ar(n){return String(n)}
 function vis(l){return (l||[]).filter(function(x){return x&&!x.hidden})}
 function opts(s){if(Array.isArray(s))return s.filter(function(o){return o&&!o.hidden&&String(o.t||"").trim()}).map(function(o){return String(o.t).trim()});return String(s||"").split("\n").map(function(x){return x.trim()}).filter(Boolean)}
 function choices(s){return opts(s).filter(function(x){return x.charAt(0)!=="#"})}

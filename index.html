@@ -60,7 +60,7 @@ a{color:inherit;text-underline-offset:5px;text-decoration-thickness:1.5px}
 .btn svg{width:1.05em;height:1.05em;flex-shrink:0}
 
 /* hero */
-.hero{display:grid;grid-template-columns:1.25fr .9fr;gap:56px;align-items:center;padding:72px 0 84px}
+.hero{display:grid;grid-template-columns:minmax(0,46rem);gap:56px;align-items:center;padding:72px 0 84px}
 h1{font-size:clamp(2.4rem,6.2vw,4.4rem);font-weight:800;line-height:1.38}
 .hl{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .42em;padding:0 .08em}
 .lead{font-size:1.18rem;max-width:33em;margin:24px 0 30px}
@@ -93,10 +93,16 @@ section{padding:76px 0;border-top:1px solid var(--rule)}
 
 /* services as index entries */
 .svc{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
-.svc li{display:grid;grid-template-columns:3.4rem 15rem 1fr;gap:10px 28px;align-items:baseline;padding:24px 12px;margin:0 -12px;border-bottom:1px solid var(--rule);transition:background-color .25s}
-.svc li:hover{background:var(--sheet)}
+.svc li{margin:0 -12px;border-bottom:1px solid var(--rule);transition:background-color .25s}
+.svc li:hover,.svc li:has(details[open]){background:var(--sheet)}
+.svc summary{display:grid;grid-template-columns:3.4rem 1fr auto;gap:10px 28px;align-items:center;padding:22px 12px;cursor:pointer;list-style:none}
+.svc summary::-webkit-details-marker{display:none}
+.svc-b{padding:0 12px 24px;margin-inline-start:calc(3.4rem + 28px)}
+.chev{width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--ink);stroke-width:2;transition:transform .25s var(--ease)}
+details[open]>summary .chev{transform:rotate(180deg)}
+summary:hover .chev{stroke:var(--ink)}
 .svc .n{font-family:var(--display);font-weight:800;font-size:2rem;line-height:1;color:#858f9b;transition:color .25s}
-.svc li:hover .n{color:var(--ink)}
+.svc li:hover .n,.svc details[open] .n{color:var(--ink)}
 .svc h3{font-size:1.25rem;font-weight:700}
 .svc p{max-width:36em}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;font-family:var(--display);font-size:.78rem;font-weight:500}
@@ -115,7 +121,13 @@ section{padding:76px 0;border-top:1px solid var(--rule)}
 .card.star .lbl{color:var(--ink);align-self:flex-start;background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .5em}
 .card h3{font-size:1.28rem;font-weight:800}
 .card p{font-size:1rem;color:var(--muted)}
-.card ul{margin:4px 0 0;padding:0;list-style:none;font-size:.98rem;flex:1;border-top:1px dotted var(--rule)}
+.card ul{margin:10px 0 0;padding:0;list-style:none;font-size:.98rem;border-top:1px dotted var(--rule)}
+.card .grow{flex:1}
+.card .more{border-top:1px dotted var(--rule)}
+.card .more summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 2px;cursor:pointer;list-style:none;font-family:var(--display);font-weight:700;font-size:.9rem}
+.card .more summary::-webkit-details-marker{display:none}
+.card .more summary .chev{width:18px;height:18px}
+.card .more[open] summary{padding-bottom:8px}
 .card li{padding:6px 0;border-bottom:1px dotted var(--rule)}
 .card .btn{align-self:flex-start;margin-top:10px}
 
@@ -237,8 +249,8 @@ body.loading #site{visibility:hidden}
 @media (max-width:860px){
   .hero{grid-template-columns:1fr;gap:44px;padding:44px 0 60px}
   .sheet{width:100%;max-width:420px;margin:0 auto}
-  .svc li{grid-template-columns:2.6rem 1fr}
-  .svc li>div{grid-column:2}
+  .svc summary{grid-template-columns:2.6rem 1fr auto;gap:10px 16px}
+  .svc-b{margin-inline-start:calc(2.6rem + 16px)}
   .pk{grid-template-columns:1fr 1fr}
   .why{grid-template-columns:1fr}
   .why div{border-inline-start:0;padding-inline-start:0;border-bottom:1px solid var(--rule);padding-bottom:20px}
@@ -256,6 +268,8 @@ body.loading #site{visibility:hidden}
   [id]{scroll-margin-top:110px}
 }
 .mcta{display:none;padding:6px 14px;font-size:.88rem}
+.mast nav a.xl{font-family:var(--display);font-weight:700;font-size:.88rem;border:1.5px solid var(--ink);padding:4px 12px;background:none}
+.mast nav a.xl:hover{background:var(--mark)}
 @media (max-width:560px){.pk{grid-template-columns:1fr}}
 @media (max-width:460px){body{font-size:17px}.steps{grid-template-columns:1fr}.band{padding:24px 20px}.brand span{display:none}.out{padding:20px 16px}}
 @media (prefers-reduced-motion:no-preference){

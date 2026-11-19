@@ -7,11 +7,11 @@ var PREVIEW=/[?&]preview=1/.test(location.search);
 var hasDB=!!(FB.apiKey&&FB.projectId&&FB.appId);
 var SDK="https://www.gstatic.com/firebasejs/10.12.2/";
 var C=null, WA="", hasWA=false;
-var AR="٠١٢٣٤٥٦٧٨٩";
+var AR="٠١٢٣٤٥٦٧٨٩", CHEV='<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function $(i){return document.getElementById(i)}
 function each(l,f){Array.prototype.forEach.call(l,f)}
 function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function ar(n){return String(n).replace(/\d/g,function(d){return AR[d]})}
+function ar(n){return String(n)}
 function vis(list){return (list||[]).filter(function(x){return x&&!x.hidden})}
 function lines(s){return String(s||"").split("\n").map(function(x){return x.trim()}).filter(Boolean)}
 function tags(s){return String(s||"").split(/[،,]/).map(function(x){return x.trim()}).filter(Boolean)}
@@ -25,29 +25,28 @@ function anchor(s){return s.type==="request"?"request.html":"#"+s.id}
 var R={
   hero:function(s,i,ctx){
     var d=s.data, firstLink=ctx.secs.filter(function(x){return x.type==="campaigns"})[0]||ctx.secs.filter(function(x){return x.type!=="hero"})[0];
-    var toc=ctx.secs.filter(function(x){return x.toc&&x.type!=="hero"});
     return '<div class="wrap" data-sec="'+i+'"><div class="hero"><div>'+
       '<h1>'+esc(d.title)+(d.highlight?' <span class="hl">'+esc(d.highlight)+'</span>':'')+'</h1>'+
       (d.lead?'<p class="lead">'+esc(d.lead)+'</p>':'')+
       '<div class="cta">'+(d.cta1?'<a class="btn" href="request.html">'+esc(d.cta1)+'</a>':'')+(d.cta2&&firstLink?'<a class="btn line" href="'+anchor(firstLink)+'">'+esc(d.cta2)+'</a>':'')+'</div>'+
       (vis(d.bullets).length?'<ul class="for">'+vis(d.bullets).map(function(b){return '<li>'+esc(b.text)+'</li>'}).join("")+'</ul>':'')+
-      '</div>'+(toc.length?'<aside class="sheet" aria-label="فهرس الصفحة"><h2>'+esc(d.tocTitle||"الفهرس")+'</h2><ol class="toc">'+toc.map(function(x){
-        return '<li><a href="'+anchor(x)+'"><span>'+esc(x.toc)+'</span><i></i><b>'+ar(ctx.folio[x.id]||"")+'</b></a></li>'}).join("")+
-      '</ol><p class="foot">'+esc(C.brand.name)+' · '+esc(C.brand.tagline)+'</p></aside>':'')+'</div></div>';
+      '</div></div></div>';
   },
   services:function(s,i,ctx){
     var items=vis(s.data.items);
     return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],s.data)+'<ol class="svc">'+items.map(function(it,k){
       var tg=tags(it.tags);
-      return '<li><span class="n">'+ar(k+1)+'</span><h3>'+esc(it.title)+'</h3><div><p>'+esc(it.text)+'</p>'+(tg.length?'<div class="tags">'+tg.map(function(t){return '<span>'+esc(t)+'</span>'}).join("")+'</div>':'')+'</div></li>';
+      var body=(it.text?'<p>'+esc(it.text)+'</p>':'')+(tg.length?'<div class="tags">'+tg.map(function(t){return '<span>'+esc(t)+'</span>'}).join("")+'</div>':'');
+      return '<li><details><summary><span class="n">'+ar(k+1)+'</span><h3>'+esc(it.title)+'</h3>'+(body?CHEV:'')+'</summary>'+(body?'<div class="svc-b">'+body+'</div>':'')+'</details></li>';
     }).join("")+'</ol></section></div>';
   },
   campaigns:function(s,i,ctx){
     var d=s.data, A=vis(d.a), B=vis(d.b), two=A.length&&B.length, pubWho=whoPublisher();
     function card(c,pub){
       var href=reqLink({pick:c.pick,pkg:c.title+(pub&&!/\(.*\)$/.test(c.title)?" (دار نشر)":""),who:pub?pubWho:""});
-      return '<article class="card'+(c.star?' star':'')+'">'+(c.label?'<span class="lbl">'+esc(c.label)+'</span>':'')+'<h3>'+esc(c.title)+'</h3>'+(c.text?'<p>'+esc(c.text)+'</p>':'')+
-        (lines(c.items).length?'<ul>'+lines(c.items).map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'<ul></ul>')+
+      var more=(c.text?'<p>'+esc(c.text)+'</p>':'')+(lines(c.items).length?'<ul>'+lines(c.items).map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'');
+      return '<article class="card'+(c.star?' star':'')+'">'+(c.label?'<span class="lbl">'+esc(c.label)+'</span>':'')+'<h3>'+esc(c.title)+'</h3>'+
+        (more?'<details class="more"><summary>'+esc(d.more||"التفاصيل")+CHEV+'</summary>'+more+'</details>':'')+'<span class="grow"></span>'+
         '<a class="btn'+(c.star?'':' line')+'" href="'+esc(href)+'">'+esc(d.button||"اطلب هذه الحملة")+'</a></article>';
     }
     return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],d)+
@@ -129,7 +128,9 @@ function render(content){
   var html='<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>'+
     '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span></a>'+
     '<a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
-    navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+'<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
+    vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(l.url)+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
+    navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+
+    '<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
     '<main id="top">'+C.sections.map(function(s,i){return s.hidden||!R[s.type]?"":R[s.type](s,i,ctx)}).join("")+'</main>'+
     '<div class="wrap" data-sec="brand"><footer><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span>'+socials()+
     (C.brand.handle?'<span class="handle">'+esc(C.brand.handle)+'</span>':'')+(C.brand.domain?'<span class="handle">'+esc(C.brand.domain)+'</span>':'')+

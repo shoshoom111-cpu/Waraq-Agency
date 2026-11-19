@@ -3,7 +3,7 @@ const FBC = (window.WARAQ || {}).firebase || {};
 const WC = window.WaraqContent;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-const toAr = (n) => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+const toAr = (n) => String(n);
 const GATES = ["g-config","g-login","g-noadmin"];
 const VIEWS = { requests:"v-requests", home:"v-editor", form:"v-editor", history:"v-history", settings:"v-settings" };
 function gate(id) { GATES.forEach(g => $(g).hidden = g !== id); document.querySelectorAll(".view").forEach(v => v.hidden = true); $("appnav").hidden = true; }
@@ -249,10 +249,10 @@ const TITLE = S("title", "العنوان", "text", { title: true }), SUB = S("su
 const L = (k, l, item, tpl, tk) => S(k, l, "list", { item, tpl, tk });
 const TYPES = {
   hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta1", "زر الطلب"), S("cta2", "الزر الثاني (يودّي للحملات)"),
-      L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text"), S("tocTitle", "عنوان الفهرس")] },
+      L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text")] },
   services: { name: "الخدمات", fields: [TITLE, SUB, L("items", "الخدمات", [S("title", "اسم الخدمة", "text", { title: true }), S("text", "الوصف", "area"), S("tags", "الوسوم", "text", { hint: "افصلي بينها بفاصلة ،" })], { title: "خدمة جديدة", text: "", tags: "" }, "title")],
     make: () => ({ title: "خدماتنا", sub: "", items: [{ title: "خدمة جديدة", text: "", tags: "" }] }) },
-  campaigns: { name: "الحملات الجاهزة", unique: true, fields: [TITLE, SUB, S("tabA", "اسم التبويب الأول"), S("tabB", "اسم التبويب الثاني"), S("button", "نص زر الحملة"),
+  campaigns: { name: "الحملات الجاهزة", unique: true, fields: [TITLE, SUB, S("tabA", "اسم التبويب الأول"), S("tabB", "اسم التبويب الثاني"), S("button", "نص زر الحملة"), S("more", "نص زر التفاصيل في البطاقة", "text", { hint: "فاضي = «التفاصيل»" }),
       L("a", "حملات التبويب الأول", null, null, "title"), L("b", "حملات التبويب الثاني", null, null, "title")],
     make: () => ({ title: "حملات جاهزة", sub: "", tabA: "للمؤلفين", tabB: "لدور النشر", button: "اطلب هذه الحملة", a: [], b: [] }) },
   cols: { name: "أعمدة", fields: [TITLE, SUB, L("items", "الأعمدة", [S("title", "العنوان", "text", { title: true }), S("text", "النص", "area")], { title: "عنوان جديد", text: "" }, "title")],
@@ -276,7 +276,8 @@ TYPES.campaigns.fields[5] = L("a", "حملات التبويب الأول", CARD,
 TYPES.campaigns.fields[6] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
 const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("tagline", "الوصف القصير"), S("cta", "زر «اطلب خدمة» في الأعلى"), S("whatsapp", "رقم الواتساب", "text", { hint: "بالصيغة الدولية مثل 9665XXXXXXXX. فاضي = أزرار الواتساب مخفية", ltr: true }),
   S("handle", "اسم الحساب", "text", { ltr: true }), S("domain", "الدومين", "text", { ltr: true }), S("year", "سنة الحقوق"),
-  L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name")];
+  L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name"),
+  L("links", "أزرار في الشريط العلوي", [S("text", "نص الزر", "text", { title: true }), S("url", "الرابط", "text", { ltr: true, hint: "رابط كامل يبدأ بـ https:// أو اسم صفحة" })], { text: "زر جديد", url: "https://" }, "text")];
 const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"), S("description", "وصف الصفحة في نتائج البحث", "area")];
 
 const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"]];
@@ -332,7 +333,7 @@ function homePanel(D) {
   h += D.sections.map((s, i) => {
     const T = TYPES[s.type] || { name: s.type, fields: [] }, k = "sec:" + s.id;
     return `<details class="card${s.hidden ? " off" : ""}" data-k="${k}" data-sec="${i}"${open[k] ? " open" : ""}><summary><span class="t">${esc(T.name)}<small class="tt">${esc(s.data.title || "")}</small></span>${ops("sections", i, n, s)}</summary><div class="body">
-      ${T.nav === false ? "" : `<div class="two">${inputHTML(S("nav", "اسمه في القائمة العلوية", "text", { hint: "فاضي = ما يظهر" }), "sections." + i, s)}${inputHTML(S("toc", "اسمه في الفهرس", "text", { hint: "فاضي = ما يظهر" }), "sections." + i, s)}</div>`}
+      ${T.nav === false ? "" : `<div class="two">${inputHTML(S("nav", "اسمه في القائمة العلوية", "text", { hint: "فاضي = ما يظهر" }), "sections." + i, s)}</div>`}
       ${fieldsHTML(T.fields, "sections." + i + ".data", s.data)}</div></details>`;
   }).join("");
   const have = new Set(D.sections.map(s => s.type));
