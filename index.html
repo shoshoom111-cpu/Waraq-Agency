@@ -120,14 +120,14 @@ section{padding:76px 0;border-top:1px solid var(--rule)}
 .card .btn{align-self:flex-start;margin-top:10px}
 
 /* why */
-.why{display:grid;grid-template-columns:repeat(3,1fr);border-top:2px solid var(--ink)}
+.why{display:grid;grid-template-columns:repeat(var(--n,3),1fr);border-top:2px solid var(--ink)}
 .why div{padding:26px 24px 4px;border-inline-start:1px solid var(--rule)}
 .why div:first-child{border-inline-start:0;padding-inline-start:0}
 .why h3{font-size:1.15rem;font-weight:700;margin-bottom:8px}
 .why p{font-size:1rem;color:var(--muted)}
 
 /* how */
-.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr)}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--n,5),1fr)}
 .steps li{position:relative;padding:28px 16px 0;border-top:2px solid var(--ink)}
 .steps li::before{content:"";position:absolute;top:-8px;right:16px;width:14px;height:14px;background:var(--mark);border:2px solid var(--ink)}
 .steps h3{font-size:1.08rem;font-weight:700;margin-bottom:6px}
@@ -217,6 +217,23 @@ footer{padding:30px 0 44px;display:flex;flex-wrap:wrap;gap:8px 24px;justify-cont
 footer b{font-family:var(--display);font-weight:800;font-size:1.3rem;color:var(--ink)}
 [hidden]{display:none!important}
 
+/* free text + testimonials (sections added from the editor) */
+.prose{border-top:2px solid var(--ink);padding-top:22px;max-width:46em}
+.prose p+p{margin-top:14px}
+.quotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;border-top:2px solid var(--ink);padding-top:24px}
+.quotes figure{margin:0;background:var(--sheet);border:1.5px solid var(--rule);padding:22px 22px 18px;display:flex;flex-direction:column;gap:14px}
+.quotes blockquote{margin:0;font-size:1.05rem}
+.quotes blockquote p::before{content:"«"}.quotes blockquote p::after{content:"»"}
+.quotes figcaption{display:flex;flex-direction:column;font-family:var(--display);font-size:.9rem;border-top:1px dotted var(--rule);padding-top:10px}
+.quotes figcaption span{color:var(--muted);font-size:.82rem}
+
+/* loading + preview inside the editor */
+body.loading #site{visibility:hidden}
+.preview [data-sec]{transition:outline-color .15s}
+.preview [data-sec]:hover{outline:2px dashed rgba(22,34,58,.35);outline-offset:-2px;cursor:pointer}
+.preview .sel-sec{outline:3px solid var(--mark)!important;outline-offset:-3px}
+.preview .top{position:static}
+
 @media (max-width:860px){
   .hero{grid-template-columns:1fr;gap:44px;padding:44px 0 60px}
   .sheet{width:100%;max-width:420px;margin:0 auto}
@@ -248,387 +265,11 @@ footer b{font-family:var(--display);font-weight:800;font-size:1.3rem;color:var(-
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}.sheet,.sheet:hover{transform:rotate(-1.6deg)}}
 </style>
 </head>
-<body>
-<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>
-<div class="top">
-  <div class="wrap">
-    <header class="mast">
-      <a class="brand" href="#top"><b>ورق</b><span>وكالة تسويق للكتب</span></a>
-      <a class="btn mcta" href="request.html">اطلب خدمة</a>
-      <nav aria-label="أقسام الصفحة">
-        <a href="#services">الخدمات</a>
-        <a href="#campaigns">الحملات</a>
-        <a href="#how">كيف نعمل</a>
-        <a href="#faq">أسئلة</a>
-        <a href="#join">للمسوقين</a>
-        <a class="btn" href="request.html">اطلب خدمة</a>
-      </nav>
-    </header>
-  </div>
-</div>
-
-<main id="top">
-<div class="wrap">
-  <div class="hero">
-    <div>
-      <h1>نوصل كتابك إلى <span class="hl">قرّائه</span></h1>
-      <p class="lead">وكالة ورق تتولى ما يحتاجه الكتاب من تسويق: حملات ينفّذها مسوقون في منصات التواصل، حضور في معارض الكتاب، أمسيات، وبوسترات ومقاطع جاهزة للنشر.</p>
-      <div class="cta">
-        <a class="btn" href="request.html">اطلب خدمة</a>
-        <a class="btn line" href="#campaigns">شوف الحملات الجاهزة</a>
-      </div>
-      <ul class="for"><li>للمؤلفين</li><li>لدور النشر</li><li>تقرير بروابط كل منشور</li></ul>
-    </div>
-    <aside class="sheet" aria-label="فهرس الصفحة">
-      <h2>الفهرس</h2>
-      <ol class="toc">
-        <li><a href="#services"><span>الخدمات</span><i></i><b>١</b></a></li>
-        <li><a href="#campaigns"><span>حملات جاهزة</span><i></i><b>٢</b></a></li>
-        <li><a href="#why"><span>لماذا ورق</span><i></i><b>٣</b></a></li>
-        <li><a href="#how"><span>كيف نعمل</span><i></i><b>٤</b></a></li>
-        <li><a href="#faq"><span>أسئلة شائعة</span><i></i><b>٥</b></a></li>
-        <li><a href="request.html"><span>اطلب خدمة</span><i></i><b>٦</b></a></li>
-        <li><a href="#join"><span>للمسوقين</span><i></i><b>٧</b></a></li>
-      </ol>
-      <p class="foot">ورق · وكالة تسويق للكتب</p>
-    </aside>
-  </div>
-
-  <section id="services">
-    <div class="head"><span class="folio">ص ١</span><h2>الخدمات</h2><p>خدمة واحدة أو أكثر، حسب ما يحتاجه كتابك.</p></div>
-    <ol class="svc">
-      <li><span class="n">١</span><h3>حملات المسوقين</h3><div><p>حملة محددة المدة لكتابك، ينشر فيها مسوقون مختارون يناسب جمهورهم نوع الكتاب. نتابع النشر والمواعيد، ونسلّمك رابط كل منشور.</p><div class="tags"><span>إنستقرام</span><span>تيك توك</span><span>إكس</span><span>سناب شات</span></div></div></li>
-      <li><span class="n">٢</span><h3>معارض الكتاب</h3><div><p>نروّج لمشاركتك وكتابك قبل المعرض وأثناءه، ونعلن عن مواعيد التوقيع، ليعرف القارئ أين يجدك ومتى.</p><div class="tags"><span>قبل المعرض</span><span>أثناء المعرض</span><span>جلسات التوقيع</span></div></div></li>
-      <li><span class="n">٣</span><h3>الأمسيات واللقاءات</h3><div><p>ننظّم أمسيتك أو لقاءك المباشر مع القرّاء ونروّج له، من الإعلان الأول إلى يوم اللقاء.</p><div class="tags"><span>تنظيم</span><span>ترويج</span><span>بث مباشر</span></div></div></li>
-      <li><span class="n">٤</span><h3>البوسترات والمقاطع</h3><div><p>مقطع تشويقي للكتاب، ومجسّم الغلاف، وبطاقات اقتباس، وتصاميم لفعالياتك، جاهزة للنشر في حساباتك.</p><div class="tags"><span>مقطع تشويقي</span><span>بطاقات اقتباس</span><span>بوسترات</span></div></div></li>
-      <li><span class="n">٥</span><h3>حملة ترويجية متكاملة</h3><div><p>خطة واحدة تجمع ما يلزم كتابك من الخدمات السابقة، بترتيب وتوقيت واحد، مع إعلان ممول عند الحاجة.</p><div class="tags"><span>تخطيط</span><span>تنفيذ</span><span>متابعة</span><span>تقرير</span></div></div></li>
-    </ol>
-  </section>
-
-  <section id="campaigns">
-    <div class="head"><span class="folio">ص ٢</span><h2>حملات جاهزة</h2><p>اختر الأقرب لاحتياجك، ونعدّلها معك حسب كتابك.</p></div>
-    <div class="aud" role="tablist" aria-label="نوع العميل">
-      <button type="button" role="tab" id="t-auth" aria-selected="true" aria-controls="pk-auth">للمؤلفين</button>
-      <button type="button" role="tab" id="t-pub" aria-selected="false" aria-controls="pk-pub" tabindex="-1">لدور النشر</button>
-    </div>
-    <div class="pk" id="pk-auth" role="tabpanel" aria-labelledby="t-auth">
-      <article class="card"><span class="lbl">لأول تجربة</span><h3>البداية</h3><p>لكاتب يجرّب التسويق لأول مرة.</p>
-        <ul><li>مقاطع من مسوقين مختارين</li><li>تصاميم للنشر</li><li>خطة تسويق مختصرة</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة مسوقين" data-pkg="البداية">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">قبل الصدور</span><h3>العدّ التنازلي</h3><p>تشويق للكتاب قبل نزوله للمكتبات.</p>
-        <ul><li>مقطع تشويقي ومجسّم الغلاف</li><li>مقاطع من مسوقين</li><li>مسابقة على نسخ من الكتاب</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة مسوقين" data-pkg="العدّ التنازلي">اطلب هذه الحملة</a></article>
-      <article class="card star"><span class="lbl">الأكثر طلبًا</span><h3>الإطلاق</h3><p>حملة متكاملة عند صدور الكتاب.</p>
-        <ul><li>مقاطع من مسوقين على أكثر من منصة</li><li>مقطع تشويقي وتصاميم</li><li>إعلان ممول</li><li>تقرير بروابط كل منشور</li></ul>
-        <a class="btn" href="request.html" data-pick="حملة متكاملة" data-pkg="الإطلاق">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">لكتاب صدر سابقًا</span><h3>الاقتباسات</h3><p>دفعة جديدة لكتاب يستحق قرّاء أكثر.</p>
-        <ul><li>بطاقات اقتباس من الكتاب</li><li>مقاطع من مسوقين</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة مسوقين" data-pkg="الاقتباسات">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">لقاء القرّاء</span><h3>الأمسية</h3><p>أمسية أو لقاء مباشر مع قرّائك.</p>
-        <ul><li>تنظيم الأمسية</li><li>تصاميم ودعوات</li><li>مقاطع تدعو للحضور</li></ul>
-        <a class="btn line" href="request.html" data-pick="أمسية" data-pkg="الأمسية">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">موسم المعارض</span><h3>معرض الكتاب</h3><p>حضورك في المعرض قبله وأثناءه.</p>
-        <ul><li>إعلان مكان التوقيع وموعده</li><li>مقاطع ومحتوى من المعرض</li><li>بوسترات للمشاركة</li></ul>
-        <a class="btn line" href="request.html" data-pick="معرض كتاب" data-pkg="معرض الكتاب">اطلب هذه الحملة</a></article>
-    </div>
-    <div class="pk" id="pk-pub" role="tabpanel" aria-labelledby="t-pub" hidden>
-      <article class="card"><span class="lbl">كتاب واحد</span><h3>إصدار جديد</h3><p>حملة لإصدار واحد من الدار.</p>
-        <ul><li>مقاطع من مسوقين</li><li>مقطع تشويقي وتصاميم</li><li>خطة وتقرير</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة متكاملة" data-pkg="إصدار جديد (دار نشر)">اطلب هذه الحملة</a></article>
-      <article class="card star"><span class="lbl">الأكثر طلبًا</span><h3>موسم الإصدارات</h3><p>عدة إصدارات في حملة واحدة.</p>
-        <ul><li>مقاطع لكل إصدار</li><li>مقطع تشويقي لكل كتاب</li><li>إعلان ممول</li><li>تقرير موحّد</li></ul>
-        <a class="btn" href="request.html" data-pick="حملة متكاملة" data-pkg="موسم الإصدارات (دار نشر)">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">موسم المعارض</span><h3>جناح المعرض</h3><p>حضور الدار وجناحها في معرض الكتاب.</p>
-        <ul><li>تغطية قبل المعرض وأثناءه</li><li>الترويج لجلسات التوقيع</li><li>بوسترات وفواصل كتب</li></ul>
-        <a class="btn line" href="request.html" data-pick="معرض كتاب" data-pkg="جناح المعرض (دار نشر)">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">كتب المخزون</span><h3>إحياء الكتب القديمة</h3><p>دفعة لكتب صدرت ولم تأخذ حقها.</p>
-        <ul><li>بطاقات اقتباس</li><li>مقاطع من مسوقين</li><li>مسابقة على نسخ</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة مسوقين" data-pkg="إحياء الكتب القديمة (دار نشر)">اطلب هذه الحملة</a></article>
-      <article class="card"><span class="lbl">حضور ثابت</span><h3>الاشتراك الشهري</h3><p>محتوى ومقاطع للدار كل شهر.</p>
-        <ul><li>مقاطع شهرية من مسوقين</li><li>تصاميم وبطاقات اقتباس</li><li>تقرير شهري</li></ul>
-        <a class="btn line" href="request.html" data-pick="حملة متكاملة" data-pkg="الاشتراك الشهري (دار نشر)">اطلب هذه الحملة</a></article>
-    </div>
-  </section>
-
-  <section id="why">
-    <div class="head"><span class="folio">ص ٣</span><h2>لماذا ورق</h2></div>
-    <div class="why">
-      <div><h3>من داخل صناعة النشر</h3><p>عملنا في التسويق داخل دار نشر، ونعرف مواسم الكتب ومعارضها وكيف يصل الكتاب إلى قارئه.</p></div>
-      <div><h3>مسوقون نعرفهم</h3><p>نختار لكل كتاب مسوقين يناسب جمهورهم نوعه، ونتابع التزامهم بالمحتوى والموعد.</p></div>
-      <div><h3>كل شيء موثّق</h3><p>اتفاق واضح قبل البدء، ومراجعة قبل النشر، وتقرير في النهاية برابط كل منشور.</p></div>
-    </div>
-    <!-- من أعمالنا: أضيفي هنا شهادات العملاء ونتائج الحملات الحقيقية بعد أخذ إذنهم، مثال:
-    <blockquote class="card"><p>"نص الشهادة"</p><span class="lbl">اسم الكاتب · اسم الكتاب</span></blockquote>
-    -->
-  </section>
-
-  <section id="how">
-    <div class="head"><span class="folio">ص ٤</span><h2>كيف نعمل</h2><p>خمس خطوات من أول تواصل إلى التسليم.</p></div>
-    <ol class="steps">
-      <li><h3>نتعرّف على كتابك</h3><p>تخبرنا عن الكتاب وموعده وما تريده له، ونقترح الحملة المناسبة.</p></li>
-      <li><h3>نتفق ونبدأ</h3><p>عرض سعر واتفاق مكتوب بالمطلوب والمدة، ودفعة أولى لبدء العمل.</p></li>
-      <li><h3>نجهّز الحملة</h3><p>نصمّم المواد ونختار المسوقين، وتراجع التصاميم قبل النشر.</p></li>
-      <li><h3>ننفّذ ونتابع</h3><p>ننشر حسب جدول، ونتابع كل مسوق ونراجع كل رابط.</p></li>
-      <li><h3>نسلّمك التقرير</h3><p>روابط المنشورات ونتائجها، مرتبة حسب المنصة.</p></li>
-    </ol>
-  </section>
-
-  <section id="publishers">
-    <div class="band">
-      <div><h2><span>دار نشر؟</span></h2><p>نعمل مع دور النشر على الإصدارات الجديدة ومواسم المعارض وكتب المخزون، بحملة لكل إصدار أو اشتراك شهري، مع فاتورة رسمية.</p></div>
-      <a class="btn" href="request.html" data-pick="حملة متكاملة" data-who="دار نشر">تواصل معنا كدار نشر</a>
-    </div>
-  </section>
-
-  <section id="faq">
-    <div class="head"><span class="folio">ص ٥</span><h2>أسئلة شائعة</h2></div>
-    <div class="faq">
-      <details><summary>كم تكلفة الحملة؟</summary><p>تختلف حسب عدد المقاطع والخدمات ومدة الحملة. أرسل لنا طلبك، ونرسل لك عرض سعر واضحًا بكل ما تشمله الحملة.</p></details>
-      <details><summary>كيف يكون الدفع؟</summary><p>دفعة أولى عند الاتفاق لبدء العمل، والباقي قبل بدء النشر. الحملات الصغيرة تُدفع كاملة عند الاتفاق.</p></details>
-      <details><summary>هل السعر يشمل الإعلانات الممولة؟</summary><p>لا. ميزانية الإعلان الممول يدفعها العميل للمنصة مباشرة، ونحن نجهّز الإعلان ونديره.</p></details>
-      <details><summary>هل تضمنون عدد مبيعات؟</summary><p>لا نضمن عدد مبيعات أو مشاهدات، لأن ذلك يعتمد على الجمهور والمنصات. نضمن تنفيذ كل ما اتفقنا عليه في موعده، ونسلّمك رابط كل منشور.</p></details>
-      <details><summary>هل المسوقون مرخّصون؟</summary><p>نعم، نتعامل مع مسوقين لديهم رخصة موثوق، ويُذكر في كل مقطع مدفوع أنه إعلان، التزامًا بأنظمة الهيئة العامة لتنظيم الإعلام.</p></details>
-      <details><summary>كم مدة الحملة؟</summary><p>أغلب الحملات من أسبوعين إلى أربعة أسابيع، وحملات المعارض تبدأ قبل المعرض بأسابيع. الأفضل أن تتواصل معنا قبل موعد صدور كتابك بشهر.</p></details>
-      <details><summary>ماذا أحتاج أرسل لكم؟</summary><p>صورة الغلاف، ملخص الكتاب، نبذة عنك، اقتباسات تحبها من الكتاب، وروابط الشراء. ونسخًا للمسوقين إن أمكن.</p></details>
-    </div>
-  </section>
-</div>
-
-<section class="req" id="request">
-  <div class="wrap">
-    <div class="head"><span class="folio">ص ٦</span><h2>اطلب خدمة</h2><p>سجّل طلبك في صفحة الطلب، ونراجعه ونتواصل معك.</p></div>
-    <div class="start">
-      <div><h3>صفحة واحدة، وتوصلنا كل التفاصيل</h3><p>اسمك، كتابك وحالته، والخدمة اللي تحتاجها، وطريقة التواصل معك.</p></div>
-      <a class="btn" href="request.html">ابدأ الطلب</a>
-    </div>
-    <div class="contact">
-      <a class="btn wa" id="wa-direct" href="#request" target="_blank" rel="noopener">راسلنا على الواتساب</a>
-      <p>حساباتنا في إنستقرام وتيك توك وإكس (تويتر): <span class="handle">@Waraq_Agency</span></p>
-      <span class="soc"><a href="https://www.instagram.com/Waraq_Agency" target="_blank" rel="noopener">إنستقرام</a><a href="https://www.tiktok.com/@Waraq_Agency" target="_blank" rel="noopener">تيك توك</a><a href="https://x.com/Waraq_Agency" target="_blank" rel="noopener">إكس (تويتر)</a></span>
-    </div>
-  </div>
-</section>
-
-<section class="req alt2" id="join">
-  <div class="wrap">
-    <div class="head"><span class="folio">ص ٧</span><h2>انضم إلى شبكة المسوقين</h2><p>تسوّق للكتب في حساباتك؟ نكلّفك بكتب تناسب جمهورك، بمدة ومطلوب واضحين لكل حملة.</p></div>
-    <form id="mk-form" novalidate>
-      <div><label for="mk-name">الاسم</label><input type="text" id="mk-name" autocomplete="name" maxlength="120" required></div>
-      <div><label for="mk-handle">الحساب</label><input type="text" id="mk-handle" dir="ltr" placeholder="@" maxlength="120" required></div>
-      <div><label for="mk-contact">الجوال <small>(واتساب)</small></label><input type="text" id="mk-contact" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05xxxxxxxx" maxlength="20"></div>
-      <div><label for="mk-genre">نوع الكتب التي تقدّمها</label><input type="text" id="mk-genre" placeholder="روايات، فكر، أطفال..." maxlength="200"></div>
-      <fieldset class="full"><legend>المنصات</legend>
-        <div class="picks" id="mk-plat">
-          <label for="pl-1"><input type="checkbox" id="pl-1" value="تيك توك">تيك توك</label>
-          <label for="pl-2"><input type="checkbox" id="pl-2" value="إنستقرام">إنستقرام</label>
-          <label for="pl-3"><input type="checkbox" id="pl-3" value="إكس">إكس</label>
-          <label for="pl-4"><input type="checkbox" id="pl-4" value="سناب شات">سناب شات</label>
-        </div>
-      </fieldset>
-      <div><label for="mk-views">متوسط المشاهدات للمقطع</label><input type="text" id="mk-views" inputmode="numeric" maxlength="40"></div>
-      <div><label for="mk-price">سعرك للمقطع (ريال)</label><input type="text" id="mk-price" inputmode="numeric" maxlength="40"></div>
-      <fieldset class="full"><legend>رخصة موثوق</legend>
-        <div class="picks" id="mk-lic">
-          <label for="lc-1"><input type="radio" name="lic" id="lc-1" value="لدي رخصة">لدي رخصة</label>
-          <label for="lc-2"><input type="radio" name="lic" id="lc-2" value="قيد الإصدار">قيد الإصدار</label>
-          <label for="lc-3"><input type="radio" name="lic" id="lc-3" value="لا يوجد">لا يوجد</label>
-        </div>
-      </fieldset>
-      <div class="hp" aria-hidden="true"><label for="mk-web">اترك هذا الحقل فارغًا</label><input type="text" id="mk-web" tabindex="-1" autocomplete="off"></div>
-      <div class="full send"><button type="submit" class="btn" id="mk-go"><span class="spin" aria-hidden="true"></span><span class="t">أرسل طلب الانضمام</span></button><span class="err" id="mk-err" role="alert"></span></div>
-      <div class="out" id="mk-out" hidden tabindex="-1">
-        <div class="ok" hidden>
-          <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#ffd84a" stroke="currentColor" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>
-          <div><h3><span>وصلنا طلب انضمامك</span></h3><p>رقم الطلب <span class="ref"></span>. نراجع حسابك ونتواصل معك إذا ناسبتنا حملة لجمهورك.</p></div>
-        </div>
-        <div class="fb">
-          <p class="note warn" hidden></p>
-          <label for="mk-text">طلب الانضمام جاهز للإرسال</label>
-          <textarea id="mk-text" readonly></textarea>
-          <div class="row"><a class="btn wa" id="mk-wa" href="#join" target="_blank" rel="noopener">إرسال بالواتساب</a>
-            <button type="button" class="btn line" data-copy="mk-text">نسخ الطلب</button>
-            <span class="done" aria-live="polite"></span></div>
-        </div>
-      </div>
-    </form>
-  </div>
-</section>
-</main>
-
-<div class="wrap">
-  <footer>
-    <b>ورق</b>
-    <span>وكالة تسويق للكتب</span>
-    <span class="soc"><a href="https://www.instagram.com/Waraq_Agency" target="_blank" rel="noopener">إنستقرام</a><a href="https://www.tiktok.com/@Waraq_Agency" target="_blank" rel="noopener">تيك توك</a><a href="https://x.com/Waraq_Agency" target="_blank" rel="noopener">إكس (تويتر)</a></span>
-    <span class="handle">@Waraq_Agency</span>
-    <span class="handle">waraq-agency.com</span>
-    <span>© 2026</span>
-  </footer>
-</div>
-
+<body class="loading">
+<div id="site"></div>
+<noscript><div class="wrap" style="padding:40px 0"><h1>وكالة ورق</h1><p>تسويق متخصص للمؤلفين ودور النشر. <a href="request.html">اطلب خدمة</a></p></div></noscript>
 <script src="config.js"></script>
-<script>
-(function(){
-  "use strict";
-  var CFG=window.WARAQ||{}, FB=CFG.firebase||{};
-  var WA=String(CFG.whatsapp||"").replace(/\D/g,"");
-  var hasWA=/^\d{8,15}$/.test(WA);
-  var hasDB=!!(FB.apiKey&&FB.projectId&&FB.appId);
-  var SDK="https://www.gstatic.com/firebasejs/10.12.2/";
-  function $(i){return document.getElementById(i)}
-  function each(list,fn){Array.prototype.forEach.call(list,fn)}
-  function wa(text){return "https://wa.me/"+WA+"?text="+encodeURIComponent(text)}
-  function val(i){return $(i).value.trim()}
-  function checked(box){return Array.prototype.filter.call($(box).querySelectorAll("input"),function(c){return c.checked}).map(function(c){return c.value})}
-
-  if(hasWA){$("wa-direct").href=wa("السلام عليكم، أرغب بالاستفسار عن خدمات وكالة ورق.");}
-  else{each(document.querySelectorAll(".wa"),function(a){a.hidden=true});}
-
-  /* ---------- Firestore (loaded only when config.js has a project) ---------- */
-  var dbReady=null;
-  function db(){
-    if(!dbReady){
-      dbReady=Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js")]).then(function(m){
-        var app=m[0].initializeApp(FB); return {fs:m[1],db:m[1].getFirestore(app)};
-      });
-      dbReady.catch(function(){dbReady=null});
-    }
-    return dbReady;
-  }
-  function save(col,data){
-    var work=db().then(function(x){
-      Object.keys(data).forEach(function(k){if(data[k]==="")delete data[k]});
-      data.state="new"; data.createdAt=x.fs.serverTimestamp(); data.source=(location.hostname||"local").slice(0,100);
-      return x.fs.addDoc(x.fs.collection(x.db,col),data);
-    });
-    var timeout=new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},15000)});
-    return Promise.race([work,timeout]);
-  }
-  if(hasDB){ // warm the SDK once the visitor heads to a form
-    var warmed=false;
-    each(document.querySelectorAll("#join input,a[href='#join']"),function(el){
-      el.addEventListener(el.tagName==="A"?"click":"focus",function(){if(!warmed){warmed=true;db().catch(function(){})}},{once:true});
-    });
-  }
-
-  /* ---------- audience tabs ---------- */
-  var tabs=[$("t-auth"),$("t-pub")];
-  function tab(pub,focus){
-    tabs.forEach(function(t,i){var on=(i===1)===pub;t.setAttribute("aria-selected",on);t.tabIndex=on?0:-1;if(on&&focus)t.focus()});
-    $("pk-auth").hidden=pub;$("pk-pub").hidden=!pub;
-  }
-  tabs[0].addEventListener("click",function(){tab(false)});
-  tabs[1].addEventListener("click",function(){tab(true)});
-  $("t-auth").parentNode.addEventListener("keydown",function(e){
-    if(["ArrowLeft","ArrowRight","Home","End"].indexOf(e.key)<0)return;
-    e.preventDefault();
-    var pub=e.key==="End"?true:e.key==="Home"?false:$("t-auth").getAttribute("aria-selected")==="true";
-    tab(pub,true);
-  });
-
-  /* ---------- current section in the nav ---------- */
-  if("IntersectionObserver" in window){
-    var links={};each(document.querySelectorAll(".mast nav a:not(.btn)"),function(a){links[a.getAttribute("href").slice(1)]=a});
-    var io=new IntersectionObserver(function(es){es.forEach(function(e){
-      var a=links[e.target.id]; if(!a)return;
-      if(e.isIntersecting){each(document.querySelectorAll(".mast nav a[aria-current]"),function(x){x.removeAttribute("aria-current")});a.setAttribute("aria-current","true")}
-    })},{rootMargin:"-45% 0px -50% 0px"});
-    Object.keys(links).forEach(function(id){var s=$(id);if(s)io.observe(s)});
-  }
-
-  /* ---------- package buttons open the request page pre-filled ---------- */
-  each(document.querySelectorAll("a[data-pick],a[data-who]"),function(a){
-    var q=new URLSearchParams();
-    if(a.dataset.pick)q.set("pick",a.dataset.pick);
-    if(a.dataset.pkg)q.set("pkg",a.dataset.pkg);
-    var who=a.dataset.who||(a.dataset.pkg&&a.dataset.pkg.indexOf("دار نشر")>-1?"دار نشر":"");
-    if(who)q.set("who",who);
-    a.href="request.html?"+q.toString();
-  });
-
-  /* ---------- form helpers ---------- */
-  function validContact(s){
-    if(!s)return false;
-    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))return true;
-    var d=s.replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-0x660}).replace(/\D/g,"");
-    return d.length>=9&&d.length<=15;
-  }
-  function digits(s){return String(s||"").replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0}).replace(/\D/g,"")}
-  function validPhone(s){var d=digits(s);return d.length>=9&&d.length<=15}
-  function normPhone(s){return digits(s).slice(0,20)}
-  function fail(errId,field,msg){
-    $(errId).textContent=msg;
-    if(field){$(field).setAttribute("aria-invalid","true");$(field).focus();}
-  }
-  function clearErr(form,errId){$(errId).textContent="";each(form.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")})}
-  function busy(btn,on,label){
-    btn.disabled=on;btn.setAttribute("aria-busy",on);
-    var t=btn.querySelector(".t");if(!btn.dataset.label)btn.dataset.label=t.textContent;
-    t.textContent=on?label:btn.dataset.label;
-  }
-  function showFallback(out,ta,link,lines,warn){
-    out=$(out);
-    out.querySelector(".ok").hidden=true;
-    out.querySelector(".fb").hidden=false;
-    var n=out.querySelector(".note");n.hidden=!warn;n.textContent=warn||"";
-    $(ta).value=lines.join("\n");
-    if(hasWA)$(link).href=wa(lines.join("\n"));
-    out.querySelector(".done").textContent="";
-    out.hidden=false;out.focus({preventScroll:true});out.scrollIntoView({block:"nearest",behavior:"smooth"});
-  }
-  function showSaved(out,ref,contact){
-    out=$(out);
-    out.querySelector(".ok").hidden=false;
-    out.querySelector(".fb").hidden=true;
-    out.querySelector(".ref").textContent=ref;
-    var c=out.querySelector(".who-contact");if(c){c.textContent=contact;c.dir="auto"}
-    out.hidden=false;out.focus({preventScroll:true});out.scrollIntoView({block:"nearest",behavior:"smooth"});
-  }
-  function submitFlow(o){
-    // o: {form, btn, out, ta, link, col, data, lines, contact}
-    if(!hasDB){showFallback(o.out,o.ta,o.link,o.lines);return}
-    busy(o.btn,true,"جارٍ الإرسال…");
-    save(o.col,o.data).then(function(ref){
-      busy(o.btn,false);
-      o.form.reset(); if(o.after)o.after();
-      showSaved(o.out,ref.id.slice(0,6).toUpperCase(),o.contact);
-    },function(err){
-      busy(o.btn,false);
-      if(window.console)console.warn("Firestore:",err);
-      showFallback(o.out,o.ta,o.link,o.lines,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.");
-    });
-  }
-
-  /* ---------- marketers form ---------- */
-  $("mk-form").addEventListener("submit",function(e){
-    e.preventDefault();
-    var form=this;clearErr(form,"mk-err");
-    if(val("mk-web"))return;
-    var name=val("mk-name"),handle=val("mk-handle"),plat=checked("mk-plat"),contact=val("mk-contact");
-    if(!name)return fail("mk-err","mk-name","اكتب اسمك.");
-    if(!handle)return fail("mk-err","mk-handle","اكتب اسم حسابك.");
-    if(contact&&!validPhone(contact))return fail("mk-err","mk-contact","رقم الجوال غير صحيح. اكتبه مثل 05xxxxxxxx أو اتركه فارغًا.");
-    if(!plat.length){fail("mk-err",null,"اختر منصة واحدة على الأقل.");$("pl-1").focus();return}
-    var d={name:name,handle:handle,phone:normPhone(contact),platforms:plat,genre:val("mk-genre"),views:val("mk-views"),price:val("mk-price"),license:checked("mk-lic").join("")};
-    var t=["طلب انضمام لشبكة مسوقي وكالة ورق","","الاسم: "+name,"الحساب: "+handle,"المنصات: "+plat.join("، ")];
-    if(contact)t.push("الجوال: "+contact);
-    if(d.genre)t.push("نوع الكتب: "+d.genre);
-    if(d.views)t.push("متوسط المشاهدات: "+d.views);
-    if(d.price)t.push("السعر للمقطع: "+d.price+" ريال");
-    if(d.license)t.push("رخصة موثوق: "+d.license);
-    submitFlow({form:form,btn:$("mk-go"),out:"mk-out",ta:"mk-text",link:"mk-wa",col:"joinRequests",data:d,lines:t,contact:contact||handle});
-  });
-
-  each(document.querySelectorAll(".req input[type=text]"),function(i){i.addEventListener("input",function(){i.removeAttribute("aria-invalid")})});
-
-  /* ---------- copy ---------- */
-  document.addEventListener("click",function(e){
-    var b=e.target.closest("[data-copy]"); if(!b)return;
-    var ta=$(b.dataset.copy),done=b.parentNode.querySelector(".done");
-    function manual(){ta.focus();ta.select();done.textContent="حدّدنا النص لك. انسخه يدويًا."}
-    try{navigator.clipboard.writeText(ta.value).then(function(){done.textContent="تم النسخ."},manual)}catch(err){manual()}
-  });
-})();
-</script>
+<script src="js/content.js"></script>
+<script src="js/home.js"></script>
 </body>
 </html>

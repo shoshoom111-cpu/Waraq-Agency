@@ -4,11 +4,306 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>لوحة المسوقين</title>
-<meta http-equiv="refresh" content="0; url=https://book-campaigns.web.app/admin.html">
-<style>body{font-family:Tahoma,sans-serif;background:#f3f5f1;color:#16223a;display:grid;place-items:center;min-height:100vh;margin:0}a{color:inherit}</style>
+<title>إدارة ورق</title>
+<meta name="theme-color" content="#f3f5f1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2316223a'/%3E%3Crect x='10' y='38' width='44' height='12' fill='%23ffd84a'/%3E%3Ctext x='32' y='44' font-family='Tahoma' font-weight='700' font-size='34' fill='%23fff' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;800&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3f5f1; --sheet:#ffffff; --ink:#16223a; --muted:#56637a; --rule:#cfd6dc; --mark:#ffd84a; --bad:#a3392b; --ok:#2f7d4f;
+  --s-new:#ffd84a; --s-ok:#c9ecd6; --s-no:#f6d4cf;
+  --display:"Noto Kufi Arabic","Geeza Pro",Tahoma,sans-serif;
+  --body:"Noto Naskh Arabic","Geeza Pro","Traditional Arabic",serif;
+  --lift:0 1px 0 var(--rule),0 18px 30px -18px rgba(22,34,58,.3);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scrollbar-color:var(--muted) var(--paper)}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.7;caret-color:var(--ink)}
+::selection{background:var(--mark);color:var(--ink)}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.45}
+p{margin:0}
+a{color:inherit;text-underline-offset:4px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+.wrap.wide{max-width:none;padding:0 20px 20px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+
+.mast{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between;padding:14px 0 12px;border-bottom:2px solid var(--ink)}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none}
+.brand b{font-family:var(--display);font-weight:800;font-size:1.7rem;line-height:1}
+.brand span{color:var(--muted);font-family:var(--display);font-size:.95rem}
+.me{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.appnav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:10px 0;border-bottom:1px solid var(--rule)}
+.appnav::-webkit-scrollbar{display:none}
+.appnav a{font-family:var(--display);font-weight:700;font-size:.9rem;text-decoration:none;padding:7px 14px;white-space:nowrap;border:1.5px solid transparent;display:inline-flex;gap:8px;align-items:center}
+.appnav a:hover{border-color:var(--rule);background:var(--sheet)}
+.appnav a[aria-current="page"]{background:var(--ink);color:var(--sheet)}
+.appnav .dot{width:8px;height:8px;border-radius:50%;background:var(--mark);border:1.5px solid var(--ink)}
+.appnav a[aria-current="page"] .dot{border-color:var(--sheet)}
+.appnav .c{font-size:.75rem;background:var(--mark);color:var(--ink);padding:0 7px;border-radius:99px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--display);font-weight:700;font-size:.9rem;line-height:1.6;text-decoration:none;border:2px solid var(--ink);padding:7px 16px;background:var(--ink);color:var(--sheet);cursor:pointer;transition:background-color .15s,color .15s}
+.btn:hover{background:var(--mark);color:var(--ink)}
+.btn.line{background:transparent;color:var(--ink)}
+.btn.line:hover{background:var(--ink);color:var(--sheet)}
+.btn.sm{padding:3px 11px;font-size:.8rem}
+.btn.danger{border-color:var(--bad);color:var(--bad);background:transparent}
+.btn.danger:hover,.btn.danger.armed{background:var(--bad);color:#fff}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.ib{border:1.5px solid var(--rule);background:var(--sheet);color:var(--ink);width:28px;height:28px;display:inline-grid;place-items:center;cursor:pointer;padding:0;font-size:.85rem;line-height:1}
+.ib:hover{border-color:var(--ink)}
+.ib.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+.ib svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib[disabled]{opacity:.35;cursor:not-allowed}
+
+.gate{max-width:440px;margin:72px auto;background:var(--sheet);padding:34px 30px 30px;box-shadow:var(--lift);position:relative}
+.gate::before,.gate::after{content:"";position:absolute;width:16px;height:16px;border:1.5px solid var(--ink)}
+.gate::before{top:-9px;right:-9px;border-left:0;border-bottom:0}
+.gate::after{bottom:-9px;left:-9px;border-right:0;border-top:0}
+.gate h1{font-size:1.5rem;font-weight:800;margin-bottom:6px}
+.hlx{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .42em}
+.gate p{color:var(--muted);margin-bottom:20px}
+.field,.fld{margin-bottom:12px}
+.field label,.fld>label{display:block;font-family:var(--display);font-weight:500;font-size:.82rem;margin-bottom:3px;color:var(--ink)}
+.fld small,.field small{color:var(--muted);font-weight:500}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=url],select,textarea{width:100%;font:inherit;font-size:.95rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);padding:6px 9px;border-radius:0;transition:border-color .15s}
+input:hover,select:hover,textarea:hover{border-color:var(--muted)}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--ink);background:var(--sheet)}
+textarea{min-height:70px;resize:vertical;line-height:1.6}
+.chk{display:flex;gap:8px;align-items:center;font-family:var(--display);font-size:.85rem;cursor:pointer;margin-bottom:12px}
+.chk input{width:16px;height:16px;accent-color:var(--ink)}
+.linkbtn{border:0;background:none;padding:0;margin-top:12px;font-family:var(--display);font-size:.85rem;color:var(--muted);text-decoration:underline;cursor:pointer}
+.msg{font-family:var(--display);font-size:.88rem;margin-top:12px}
+.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.msg:empty{display:none}
+.hint{font-family:var(--display);font-size:.8rem;color:var(--muted)}
+
+.bar{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center;justify-content:space-between;padding:20px 0 14px}
+.tabs{display:inline-flex;border:2px solid var(--ink)}
+.tabs button{font-family:var(--display);font-weight:700;font-size:.92rem;border:0;background:transparent;color:var(--ink);padding:8px 18px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.tabs button:hover{background:rgba(255,216,74,.45)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
+.tabs .c{font-size:.78rem;opacity:.8}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{width:220px;background:var(--sheet)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.chips button{font-family:var(--display);font-size:.82rem;font-weight:500;border:1.5px solid var(--rule);background:var(--sheet);color:var(--ink);padding:3px 12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chips button:hover{border-color:var(--ink)}
+.chips button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--sheet)}
+.info{font-family:var(--display);font-size:.84rem;color:var(--muted);padding:12px 0 0}
+.list{list-style:none;margin:0;padding:0}
+.item{border-bottom:1px solid var(--rule)}
+.row{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) auto 9.5rem;gap:6px 18px;align-items:center;padding:14px 10px;cursor:pointer;transition:background-color .15s}
+.row:hover{background:var(--sheet)}
+.row:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.item.open .row{background:var(--sheet)}
+.row .nm{font-family:var(--display);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sm{color:var(--muted);font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .dt{color:var(--muted);font-family:var(--display);font-size:.8rem;text-align:left}
+.pill{font-family:var(--display);font-size:.76rem;font-weight:700;padding:2px 10px;border:1px solid rgba(22,34,58,.25);white-space:nowrap;justify-self:start;background:var(--sheet)}
+.pill[data-s="new"]{background:var(--s-new);border-color:var(--ink)}
+.pill[data-s="approved"]{background:var(--s-ok)}
+.pill[data-s="rejected"]{background:var(--s-no)}
+.detail{background:var(--sheet);padding:4px 10px 22px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px 32px}
+.detail dl{margin:0;display:grid;grid-template-columns:8.5rem 1fr;gap:6px 14px;align-content:start}
+.detail dt{font-family:var(--display);font-size:.82rem;color:var(--muted);padding-top:2px}
+.detail dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.side{border-inline-start:1px solid var(--rule);padding-inline-start:24px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.side .acts{margin-bottom:14px}
+.saved{font-family:var(--display);font-size:.82rem;color:var(--ok)}
+.saved.err{color:var(--bad)}
+.empty{padding:56px 10px;text-align:center;color:var(--muted)}
+.empty h2{font-size:1.15rem;color:var(--ink);margin-bottom:6px}
+.skel{height:52px;margin:0 0 1px;background:linear-gradient(90deg,var(--sheet),#eef1ec,var(--sheet));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+
+.edbar{position:sticky;top:0;z-index:5;background:var(--paper);display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--rule)}
+.edbar h1{font-size:1.15rem;font-weight:800}
+.edbar .state{font-family:var(--display);font-size:.8rem;color:var(--muted)}
+.edbar .state.dirty{color:var(--ink)}
+.edbar .state.dirty::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mark);border:1.5px solid var(--ink);margin-inline-end:6px;vertical-align:middle}
+.edbar input.note{width:220px;background:var(--sheet)}
+.seg{display:inline-flex;border:1.5px solid var(--ink)}
+.seg button{font-family:var(--display);font-size:.8rem;font-weight:700;border:0;background:var(--sheet);color:var(--ink);padding:4px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.ed{display:grid;grid-template-columns:minmax(340px,430px) minmax(0,1fr);gap:20px;align-items:start;padding-top:16px}
+.ed>*{min-width:0}
+.panel{max-height:calc(100vh - 170px);overflow-y:auto;padding-inline-end:6px;scrollbar-width:thin}
+.prev{position:sticky;top:76px;height:calc(100vh - 100px);background:#e3e7e1;border:1.5px solid var(--rule);display:grid;place-items:start center;overflow:hidden}
+.prev iframe{width:100%;height:100%;border:0;background:var(--paper);transition:width .25s}
+.prev.mobile iframe{width:390px;border-inline:1.5px solid var(--rule)}
+.card{background:var(--sheet);border:1.5px solid var(--rule);margin-bottom:10px}
+.card>summary{list-style:none;cursor:pointer;display:flex;gap:8px;align-items:center;padding:10px 12px;font-family:var(--display);font-weight:700;font-size:.92rem}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card>summary .t small{font-weight:500;color:var(--muted);margin-inline-start:6px}
+.card>summary::before{content:"";width:8px;height:8px;border-left:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg);transition:transform .15s;flex:none;margin-inline-start:2px}
+.card[open]>summary::before{transform:rotate(-45deg)}
+.card[open]>summary{border-bottom:1px solid var(--rule)}
+.card.off>summary .t{opacity:.45;text-decoration:line-through}
+.card.flash{animation:flash 1.2s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 4px var(--mark)}100%{box-shadow:0 0 0 0 transparent}}
+.card>.body{padding:12px}
+.card .ops{display:flex;gap:4px;flex:none}
+.card .tag{font-size:.68rem;font-weight:700;background:var(--paper);border:1px solid var(--rule);padding:0 6px;white-space:nowrap}
+.card .tag.lock{background:var(--mark);border-color:var(--ink)}
+.lst{border-top:1px dashed var(--rule);padding-top:10px;margin-top:6px}
+.lst>h4{font-family:var(--display);font-size:.84rem;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.lst .card{border-color:#e1e6e9;background:#fbfcfa}
+.lst .card>summary{font-size:.85rem;padding:7px 10px}
+.addrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.addrow select{width:auto;flex:1;min-width:140px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.restore{background:#fff4c7;border:1.5px solid #e3c44a;padding:10px 12px;margin:12px 0 0;font-family:var(--display);font-size:.85rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.mprev{display:none}
+
+.hist{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.hist li{display:grid;grid-template-columns:9rem minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:12px 6px;border-bottom:1px solid var(--rule)}
+.hist .when{font-family:var(--display);font-size:.8rem;color:var(--muted)}
+.hist .what{min-width:0}
+.hist .what b{font-family:var(--display);font-size:.9rem}
+.hist .what p{color:var(--muted);font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cur{font-family:var(--display);font-size:.72rem;font-weight:700;background:var(--s-ok);border:1px solid rgba(22,34,58,.25);padding:0 8px;margin-inline-start:6px}
+.panelbox{background:var(--sheet);box-shadow:var(--lift);padding:22px 24px;margin-top:20px;max-width:680px}
+.panelbox h2{font-size:1.15rem;font-weight:800;margin-bottom:12px}
+.panelbox .hint{margin:6px 0 12px}
+
+.modal{position:fixed;inset:0;background:rgba(22,34,58,.55);z-index:50;display:grid;grid-template-rows:auto 1fr;padding:20px}
+.modal .mbar{background:var(--sheet);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;font-family:var(--display);font-size:.9rem}
+.modal iframe{width:100%;height:100%;border:0;background:var(--paper)}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--sheet);font-family:var(--display);font-size:.88rem;padding:10px 18px;z-index:60;box-shadow:var(--lift);max-width:calc(100vw - 32px)}
+
+@media (max-width:980px){
+  .ed{grid-template-columns:minmax(0,1fr)}
+  .panel{max-height:none;overflow:visible}
+  .prev{display:none}
+  .prev.open{display:grid;position:fixed;inset:0;z-index:40;height:auto;top:0}
+  .mprev{display:inline-flex}
+  .prev .close{position:absolute;top:10px;left:10px;z-index:2}
+}
+@media (max-width:820px){
+  .row{grid-template-columns:1fr auto;grid-template-areas:"nm pill" "sm sm" "dt dt"}
+  .row .nm{grid-area:nm}.row .sm{grid-area:sm}.row .pill{grid-area:pill;justify-self:end}.row .dt{grid-area:dt;text-align:right}
+  .detail{grid-template-columns:1fr}
+  .side{border-inline-start:0;padding-inline-start:0;border-top:1px solid var(--rule);padding-top:16px}
+  .detail dl{grid-template-columns:7rem 1fr}
+  .search{width:100%}.tools{width:100%}
+  .hist li{grid-template-columns:1fr;gap:4px}
+  .edbar input.note{width:100%}
+}
+@media (min-width:981px){.prev .close{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 </head>
 <body>
-<p>الطلبات صارت في <a href="https://book-campaigns.web.app/admin.html">لوحة المسوقين</a> (تبويب «الطلبات»).</p>
+<div class="wrap" id="frame">
+  <header class="mast">
+    <a class="brand" href="index.html"><b>ورق</b><span>إدارة الموقع</span></a>
+    <div class="me" id="me" hidden>
+      <a class="btn line sm" target="_blank" rel="noopener" href="https://book-campaigns.web.app/admin.html">لوحة المسوقين</a>
+      <a class="btn line sm" target="_blank" rel="noopener" href="index.html">فتح الموقع</a>
+      <button class="btn line sm" id="logout" type="button">تسجيل الخروج</button>
+    </div>
+  </header>
+  <nav class="appnav" id="appnav" aria-label="صفحات الإدارة" hidden>
+    <a href="#requests" data-view="requests">الطلبات <span class="c num" id="nav-new" hidden></span></a>
+    <a href="#home" data-view="home">تعديل الصفحة الأساسية <span class="dot" data-dirty="home" hidden></span></a>
+    <a href="#form" data-view="form">تعديل صفحة الطلبات <span class="dot" data-dirty="request" hidden></span></a>
+    <a href="#history" data-view="history">السجل والنسخ</a>
+    <a href="#settings" data-view="settings">الإعدادات</a>
+  </nav>
+
+  <div class="gate" id="g-config" hidden><h1><span class="hlx">قاعدة البيانات غير مربوطة</span></h1><p>بيانات Firebase ناقصة في ملف config.js.</p></div>
+  <form class="gate" id="g-login" hidden novalidate>
+    <h1><span class="hlx">تسجيل الدخول</span></h1>
+    <p>لإدارة موقع الوكالة وطلباته.</p>
+    <div class="field"><label for="em">البريد</label><input id="em" type="email" autocomplete="username" dir="ltr"></div>
+    <div class="field"><label for="pw">كلمة المرور</label><input id="pw" type="password" autocomplete="current-password" dir="ltr"></div>
+    <button class="btn" type="submit" id="login-btn">دخول</button>
+    <button class="linkbtn" type="button" id="forgot">نسيت كلمة المرور؟</button>
+    <p class="msg" id="login-msg" role="alert"></p>
+  </form>
+  <div class="gate" id="g-noadmin" hidden><h1><span class="hlx">الحساب ما عنده صلاحية</span></h1><p>هذا الحساب ما يقدر يدير الموقع. سجّلي خروج وادخلي بالحساب الصحيح.</p></div>
+
+  <main id="v-requests" class="view" hidden>
+    <div class="bar">
+      <div class="tabs" role="tablist" aria-label="نوع الطلبات">
+        <button type="button" role="tab" aria-selected="true" data-col="requests">طلبات الخدمة <span class="c num" data-count="requests">٠</span></button>
+        <button type="button" role="tab" aria-selected="false" data-col="joinRequests" tabindex="-1">طلبات المسوقين <span class="c num" data-count="joinRequests">٠</span></button>
+      </div>
+      <div class="tools">
+        <input class="search" id="q" type="search" placeholder="ابحث بالاسم، الكتاب، الحساب…" aria-label="بحث">
+        <button class="btn line sm" type="button" id="csv">تصدير CSV</button>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="تصفية حسب الحالة"></div>
+    <p class="info">نفس الطلبات تظهر في تبويب «الطلبات» في لوحة المسوقين. الموافقة تكون من اللوحة عشان ينضاف الكتاب أو المسوق تلقائيًا.</p>
+    <div aria-live="polite">
+      <div id="loading"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+      <ul class="list" id="list"></ul>
+      <div class="empty" id="empty" hidden><h2 id="empty-h"></h2><p id="empty-p"></p></div>
+    </div>
+  </main>
+
+  <main id="v-editor" class="view" hidden>
+    <div class="edbar">
+      <div><h1 id="ed-title"></h1><span class="state" id="ed-state"></span></div>
+      <div class="acts">
+        <div class="seg" role="group" aria-label="حجم المعاينة"><button type="button" data-dev="desk" aria-pressed="true">كمبيوتر</button><button type="button" data-dev="mobile" aria-pressed="false">جوال</button></div>
+        <button class="btn line sm mprev" type="button" id="ed-show">معاينة</button>
+        <button class="btn line sm" type="button" id="ed-undo" disabled>تراجع</button>
+        <button class="btn line sm" type="button" id="ed-revert" disabled>إلغاء التعديلات</button>
+        <input class="note" id="ed-note" type="text" maxlength="200" placeholder="وصف التعديل (اختياري)" aria-label="وصف التعديل">
+        <button class="btn" type="button" id="ed-save" disabled>حفظ ونشر</button>
+      </div>
+    </div>
+    <div id="ed-draft"></div>
+    <div class="ed">
+      <div class="panel" id="panel"></div>
+      <div class="prev" id="prev"><button class="btn sm close" type="button" id="ed-hide">إغلاق المعاينة</button><iframe id="frame-prev" title="معاينة"></iframe></div>
+    </div>
+  </main>
+
+  <main id="v-history" class="view" hidden>
+    <div class="bar">
+      <div class="chips" id="h-chips" role="group" aria-label="نوع النسخ" style="border:0;padding:0"></div>
+      <div class="tools"><button class="btn line sm" type="button" data-orig="home">رجوع للصفحة الأساسية الأصلية</button><button class="btn line sm" type="button" data-orig="request">رجوع لصفحة الطلبات الأصلية</button></div>
+    </div>
+    <p class="info" style="padding:0 0 14px">كل مرة تضغطين «حفظ ونشر» تنحفظ نسخة هنا. «استرجاع» يرجّع الموقع لهذي النسخة، والاسترجاع نفسه ينحفظ كنسخة جديدة فتقدرين ترجعين عنه.</p>
+    <ul class="hist" id="hist"></ul>
+    <div class="empty" id="h-empty" hidden><h2>ما فيه نسخ بعد</h2><p>أول ما تحفظين تعديل على الصفحة الأساسية أو صفحة الطلبات تظهر النسخة هنا.</p></div>
+  </main>
+
+  <main id="v-settings" class="view" hidden>
+    <section class="panelbox" aria-labelledby="set-h">
+      <h2 id="set-h"><span class="hlx">تنبيهات الطلبات بالإيميل</span></h2>
+      <div class="field"><label for="ntf">بريد التنبيهات</label><input id="ntf" type="email" dir="ltr" maxlength="120" placeholder="name@example.com"></div>
+      <p class="hint">كل طلب جديد من الموقع (طلب خدمة أو طلب انضمام مسوق) يوصل تنبيه عنه لهذا البريد. اتركيه فاضي لإيقاف التنبيهات.</p>
+      <div class="acts"><button class="btn sm" type="button" id="ntf-save">حفظ</button><button class="btn line sm" type="button" id="ntf-test">إرسال إيميل تجربة</button><span class="saved" id="ntf-msg" aria-live="polite"></span></div>
+      <p class="hint"><b>أول مرة:</b> بعد الحفظ اضغطي «إرسال إيميل تجربة». يوصلك إيميل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>، اضغطيه مرة وحدة وبعدها تبدأ التنبيهات. شيّكي على البريد المزعج.</p>
+    </section>
+    <section class="panelbox">
+      <h2><span class="hlx">وين أعدّل الباقي؟</span></h2>
+      <p class="hint" style="font-size:.88rem">رقم الواتساب، اسم الوكالة، الحسابات، وعنوان الموقع في محرّكات البحث: من «تعديل الصفحة الأساسية» ← «معلومات عامة».</p>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-label="معاينة نسخة">
+  <div class="mbar"><span id="modal-t"></span><div class="acts"><button class="btn sm" type="button" id="modal-restore">استرجاع هذي النسخة</button><button class="btn line sm" type="button" id="modal-close">إغلاق</button></div></div>
+  <iframe id="modal-frame" title="معاينة النسخة"></iframe>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="config.js"></script>
+<script src="js/content.js"></script>
+<script type="module" src="js/admin.js"></script>
 </body>
 </html>

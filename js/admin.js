@@ -1,0 +1,618 @@
+/* إدارة موقع وكالة ورق: الطلبات، تعديل الصفحة الأساسية، تعديل صفحة الطلبات، السجل والنسخ، الإعدادات */
+const FBC = (window.WARAQ || {}).firebase || {};
+const WC = window.WaraqContent;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const toAr = (n) => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+const GATES = ["g-config","g-login","g-noadmin"];
+const VIEWS = { requests:"v-requests", home:"v-editor", form:"v-editor", history:"v-history", settings:"v-settings" };
+function gate(id) { GATES.forEach(g => $(g).hidden = g !== id); document.querySelectorAll(".view").forEach(v => v.hidden = true); $("appnav").hidden = true; }
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 3500); }
+function arm(btn, msg) {
+  if (btn.dataset.armed === "1") return true;
+  btn.dataset.armed = "1"; btn.classList.add("armed"); toast(msg);
+  setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ""; btn.classList.remove("armed"); } }, 4000);
+  return false;
+}
+const ICON = {
+  up:'<svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>', down:'<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+  eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  off:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7c1.6 0 3-.4 4.3-1"/></svg>',
+  del:'<svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'
+};
+if (!(FBC.apiKey && FBC.projectId && FBC.appId)) { gate("g-config"); throw new Error("config"); }
+
+const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+const [{ initializeApp }, A, F] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")]);
+const app = initializeApp(FBC);
+const auth = A.getAuth(app); auth.languageCode = "ar";
+const db = F.getFirestore(app);
+
+/* =============== sign in =============== */
+const lmsg = (t, ok) => { $("login-msg").textContent = t; $("login-msg").className = "msg " + (ok ? "ok" : "err"); };
+$("g-login").addEventListener("submit", async (e) => {
+  e.preventDefault(); const btn = $("login-btn"); lmsg("");
+  if (!$("em").value || !$("pw").value) return lmsg("اكتبي البريد وكلمة المرور.");
+  btn.disabled = true; btn.textContent = "جارٍ الدخول…";
+  try { await A.signInWithEmailAndPassword(auth, $("em").value.trim(), $("pw").value); }
+  catch (err) { const c = err.code || "";
+    lmsg(c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found") ? "البريد أو كلمة المرور غير صحيحة. جرّبي «نسيت كلمة المرور؟»." :
+      c.includes("too-many-requests") ? "محاولات كثيرة. انتظري دقائق وجرّبي مرة ثانية." : c.includes("network") ? "ما فيه اتصال بالإنترنت." : "تعذّر تسجيل الدخول (" + c + ")."); }
+  finally { btn.disabled = false; btn.textContent = "دخول"; }
+});
+$("forgot").addEventListener("click", async () => {
+  const em = $("em").value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(em)) return lmsg("اكتبي بريدك أولًا، ثم اضغطي «نسيت كلمة المرور؟».");
+  try { await A.sendPasswordResetEmail(auth, em); lmsg("إذا كان البريد مسجّلًا، وصلك رابط لتغيير كلمة المرور. شيّكي على البريد المزعج كمان.", true); }
+  catch { lmsg("تعذّر الإرسال. تأكدي من البريد وحاولي بعد قليل."); }
+});
+$("logout").addEventListener("click", () => {
+  if (anyDirty() && !confirm("عندك تعديلات ما انحفظت. تبين تطلعين؟")) return;
+  A.signOut(auth);
+});
+
+let USER = null, unsubs = [];
+A.onAuthStateChanged(auth, (user) => {
+  unsubs.forEach(u => u()); unsubs = []; USER = user;
+  $("me").hidden = !user;
+  if (!user) { gate("g-login"); return; }
+  GATES.forEach(g => $(g).hidden = true); $("appnav").hidden = false;
+  startRequests(); loadSettings(); route();
+});
+
+/* =============== routing =============== */
+let VIEW = null;
+function route() {
+  if (!USER) return;
+  let v = location.hash.slice(1); if (!VIEWS[v]) v = "requests";
+  VIEW = v;
+  document.querySelectorAll(".view").forEach(el => el.hidden = el.id !== VIEWS[v]);
+  document.querySelectorAll(".appnav a").forEach(a => { if (a.dataset.view === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  $("frame").classList.toggle("wide", v === "home" || v === "form");
+  if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
+  if (v === "history") loadHistory();
+}
+window.addEventListener("hashchange", route);
+
+/* =============== requests =============== */
+const STATES = [["new","جديد"],["approved","مقبول"],["rejected","مرفوض"]];
+const SNAME = Object.fromEntries(STATES);
+const RF = {
+  requests: [["who","الصفة"],["phone","الجوال"],["email","البريد"],["book","الكتاب"],["genre","النوع"],["status","حالة الكتاب"],["date","الموعد المهم"],["where","يُباع في"],["link","رابط"],["picks","الخدمات"],["pkg","الحملة الجاهزة"],["budget","الميزانية"],["notes","تفاصيل"]],
+  joinRequests: [["handle","الحساب"],["phone","الجوال"],["platforms","المنصات"],["genre","نوع الكتب"],["views","متوسط المشاهدات"],["price","السعر للمقطع"],["license","رخصة موثوق"]]
+};
+const fmt = new Intl.DateTimeFormat("ar-u-ca-gregory-nu-latn", { dateStyle: "medium", timeStyle: "short" });
+const when = (d) => d && d.toDate ? fmt.format(d.toDate()) : "الآن";
+const txt = (v) => Array.isArray(v) ? v.join("، ") : (v ?? "");
+const RQ = { requests: [], joinRequests: [] }, RQL = { requests: false, joinRequests: false };
+let col = "requests", filter = "all", query = "", openId = null;
+function startRequests() {
+  Object.keys(RQ).forEach(c => {
+    const q = F.query(F.collection(db, c), F.orderBy("createdAt", "desc"), F.limit(1000));
+    unsubs.push(F.onSnapshot(q, (snap) => {
+      RQ[c] = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })); RQL[c] = true;
+      document.querySelector(`[data-count="${c}"]`).textContent = toAr(RQ[c].filter(x => x.state === "new").length);
+      const n = RQ.requests.filter(x => x.state === "new").length + RQ.joinRequests.filter(x => x.state === "new").length;
+      $("nav-new").hidden = !n; $("nav-new").textContent = toAr(n);
+      if (c === col) renderReq();
+    }, (err) => {
+      if (err.code === "permission-denied") { gate("g-noadmin"); $("me").hidden = false; return; }
+      RQL[c] = true; if (c === col) reqEmpty("تعذّر تحميل الطلبات", err.code || err.message);
+    }));
+  });
+}
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => selectTab(b)));
+document.querySelector(".tabs").addEventListener("keydown", (e) => {
+  if (!["ArrowLeft","ArrowRight"].includes(e.key)) return;
+  const other = [...document.querySelectorAll(".tabs button")].find(b => b.getAttribute("aria-selected") !== "true"); selectTab(other); other.focus();
+});
+function selectTab(b) { document.querySelectorAll(".tabs button").forEach(x => { const on = x === b; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; }); col = b.dataset.col; filter = "all"; openId = null; renderReq(); }
+$("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderReq(); });
+$("chips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; openId = null; renderReq(); });
+function matches(d) {
+  if (filter !== "all" && d.state !== filter) return false;
+  if (!query) return true;
+  return JSON.stringify(Object.values(d)).toLowerCase().includes(query);
+}
+function summary(d) {
+  return col === "requests" ? [d.dash === false ? "" : "لوحة المسوقين", d.who, d.book && "«" + d.book + "»", txt(d.picks)].filter(Boolean).join(" · ")
+    : [d.handle, txt(d.platforms), d.price && d.price + " ريال"].filter(Boolean).join(" · ");
+}
+function contactLinks(d) {
+  let out = "";
+  if (d.phone) {
+    let n = String(d.phone).replace(/\D/g, "");
+    if (n.startsWith("00")) n = n.slice(2);
+    if (n.startsWith("05") && n.length === 10) n = "966" + n.slice(1); else if (n.startsWith("5") && n.length === 9) n = "966" + n;
+    const hi = col === "requests" ? `السلام عليكم ${d.name}،\nوصلنا طلبك${d.book ? " لكتاب «" + d.book + "»" : ""} من موقع وكالة ورق.` : `أهلًا ${d.name}،\nوصلنا طلب انضمامك لشبكة مسوقي وكالة ورق.`;
+    out += `<a class="btn sm" href="https://wa.me/${n}?text=${encodeURIComponent(hi)}" target="_blank" rel="noopener">واتساب</a><a class="btn line sm" href="tel:+${n}">اتصال</a>`;
+  }
+  if (d.email) out += `<a class="btn line sm" href="mailto:${esc(d.email)}">بريد</a>`;
+  return out;
+}
+function rows(d) {
+  return [...RF[col].filter(([k]) => txt(d[k]) !== ""), ...(d.answers || []).map(a => [null, a.l, a.v])]
+    .map(r => r[0] === null ? [r[1], r[2]] : [r[1], txt(d[r[0]])]);
+}
+function reqDetail(d) {
+  const toDash = col === "joinRequests" || d.dash !== false;
+  const decide = d.state === "new"
+    ? (toDash ? `<a class="btn sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">الموافقة من لوحة المسوقين</a>` : `<button class="btn sm" type="button" data-accept="${d.id}">قبول</button>`) + `<button class="btn danger sm" type="button" data-reject="${d.id}">رفض</button>`
+    : `<button class="btn danger sm" type="button" data-del="${d.id}">حذف</button>`;
+  return `<div class="detail" id="d-${d.id}"><dl><dt>التاريخ</dt><dd class="num">${esc(when(d.createdAt))}</dd><dt>الحالة</dt><dd>${esc(SNAME[d.state] || d.state || "")}</dd>${col === "requests" ? `<dt>يروح لـ</dt><dd>${d.dash === false ? "صفحة الوكالة فقط" : "لوحة المسوقين وصفحة الوكالة"}</dd>` : ""}
+    ${rows(d).map(([l, v]) => `<dt>${esc(l)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    <div class="side"><div class="acts">${contactLinks(d)}<button class="btn line sm" type="button" data-copy="${d.id}">نسخ الطلب</button></div>
+      <div class="field"><label for="nt-${d.id}">ملاحظة داخلية <small>(تظهر في لوحة المسوقين بعد)</small></label><textarea id="nt-${d.id}" maxlength="2000" placeholder="عرض السعر، موعد المكالمة…">${esc(d.adminNote || "")}</textarea></div>
+      <div class="acts"><button class="btn sm" type="button" data-save="${d.id}">حفظ الملاحظة</button><span class="saved" aria-live="polite"></span></div>
+      <div class="acts" style="margin-top:16px">${decide}</div></div></div>`;
+}
+function reqEmpty(h, p) { $("loading").hidden = true; $("list").innerHTML = ""; $("empty").hidden = false; $("empty-h").textContent = h; $("empty-p").textContent = p; }
+function renderReq() {
+  const all = RQ[col];
+  const chip = (key, label, n) => `<button type="button" data-f="${key}" aria-pressed="${filter === key}">${label} <span class="num">${toAr(n)}</span></button>`;
+  $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => d.state === k).length)).join("");
+  if (!RQL[col]) { $("loading").hidden = false; $("list").innerHTML = ""; $("empty").hidden = true; return; }
+  $("loading").hidden = true;
+  const items = all.filter(matches);
+  if (!all.length) return reqEmpty(col === "requests" ? "ما فيه طلبات خدمة بعد" : "ما فيه طلبات انضمام بعد", "أول ما يرسل أحد طلبًا من الموقع يظهر هنا وفي لوحة المسوقين.");
+  if (!items.length) return reqEmpty("ما فيه نتائج", "غيّري الكلمة أو الحالة المختارة.");
+  $("empty").hidden = true;
+  $("list").innerHTML = items.map(d => `<li class="item${openId === d.id ? " open" : ""}"><button class="row" type="button" data-open="${d.id}" aria-expanded="${openId === d.id}" aria-controls="d-${d.id}">
+    <span class="nm">${esc(d.name || "بدون اسم")}</span><span class="sm">${esc(summary(d))}</span><span class="pill" data-s="${esc(d.state || "")}">${esc(SNAME[d.state] || "—")}</span><span class="dt num">${esc(when(d.createdAt))}</span>
+    </button>${openId === d.id ? reqDetail(d) : ""}</li>`).join("");
+}
+$("list").addEventListener("click", async (e) => {
+  const o = e.target.closest("[data-open]");
+  if (o) { openId = openId === o.dataset.open ? null : o.dataset.open; renderReq(); document.querySelector(`[data-open="${o.dataset.open}"]`)?.focus(); return; }
+  const s = e.target.closest("[data-save]");
+  if (s) { const id = s.dataset.save, m = s.parentNode.querySelector(".saved"); s.disabled = true; m.textContent = "";
+    try { await F.updateDoc(F.doc(db, col, id), { adminNote: $("nt-" + id).value.trim() }); m.className = "saved"; m.textContent = "تم الحفظ."; }
+    catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { s.disabled = false; } return; }
+  const ac = e.target.closest("[data-accept]");
+  if (ac) { try { await F.updateDoc(F.doc(db, col, ac.dataset.accept), { state: "approved", handledAt: F.serverTimestamp() }); toast("قُبل الطلب."); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } return; }
+  const rj = e.target.closest("[data-reject]");
+  if (rj) { if (!arm(rj, "اضغطي «رفض» مرة ثانية للتأكيد.")) return;
+    try { await F.updateDoc(F.doc(db, col, rj.dataset.reject), { state: "rejected", handledAt: F.serverTimestamp() }); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } return; }
+  const del = e.target.closest("[data-del]");
+  if (del) { if (!arm(del, "اضغطي «حذف» مرة ثانية. الحذف نهائي وينحذف من لوحة المسوقين بعد.")) return;
+    try { await F.deleteDoc(F.doc(db, col, del.dataset.del)); openId = null; } catch (err) { toast("ما انحذف: " + (err.code || err.message)); } return; }
+  const cp = e.target.closest("[data-copy]");
+  if (cp) { const d = RQ[col].find(x => x.id === cp.dataset.copy);
+    try { await navigator.clipboard.writeText([`الاسم: ${d.name}`, ...rows(d).map(([l, v]) => `${l}: ${v}`)].join("\n")); toast("تم نسخ الطلب."); } catch { toast("تعذّر النسخ."); } }
+});
+$("csv").addEventListener("click", () => {
+  const list = RQ[col].filter(matches);
+  const extra = [...new Set(list.flatMap(d => (d.answers || []).map(a => a.l)))];
+  const cols = [["name","الاسم"], ...RF[col], ["adminNote","ملاحظة"]];
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = [...cols.map(c => c[1]), ...extra, "الحالة", "التاريخ"].map(cell).join(",") + "\n" +
+    list.map(d => [...cols.map(([k]) => txt(d[k])), ...extra.map(l => ((d.answers || []).find(a => a.l === l) || {}).v || ""), SNAME[d.state] || d.state, when(d.createdAt)].map(cell).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+  a.download = (col === "requests" ? "طلبات-الخدمة" : "طلبات-المسوقين") + ".csv"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+
+/* =============== content: load / publish =============== */
+const ED = {
+  home: { id: "home", title: "تعديل الصفحة الأساسية", page: "index.html", data: null, saved: null, undo: [], loading: null },
+  request: { id: "request", title: "تعديل صفحة الطلبات", page: "request.html", data: null, saved: null, undo: [], loading: null }
+};
+const OPEN = { home: {}, request: {} };
+let CUR = null;
+function loadContent(id) {
+  const E = ED[id];
+  if (!E.loading) E.loading = F.getDoc(F.doc(db, "siteContent", id)).then(s => {
+    const j = s.exists() ? s.data().json : null;
+    E.pub = j || JSON.stringify(WC.defaults(id));
+    E.data = prep(id, E.pub); E.saved = JSON.stringify(E.data);
+    let draft = null; try { draft = localStorage.getItem("waraq-draft-" + id); } catch {}
+    E.draft = draft && draft !== E.saved ? draft : null;
+  }).catch(err => { E.loading = null; throw err; });
+  return E.loading;
+}
+/* request options get a hidden stable id, so a renamed option can be followed everywhere it is used */
+function prep(id, json) {
+  const D = JSON.parse(json);
+  if (id === "request") { WC.normRequest(D); reqFields(D).forEach(f => { if (Array.isArray(f.options)) f.options.forEach((o, i) => { if (o && !o.id) o.id = "o" + i; }); }); }
+  return D;
+}
+const reqFields = (D) => ((D && D.parts) || []).flatMap(p => p.fields || []);
+const baseT = (s) => String(s || "").replace(/\s*\(.*\)\s*$/, "").trim();
+const sameRef = (ref, t) => !!ref && (ref === t || baseT(ref) === baseT(t) || baseT(t).startsWith(baseT(ref)));
+function refOptions(src) {
+  const f = reqFields(ED.request.data).find(x => x.key === src);
+  return f && Array.isArray(f.options) ? f.options.filter(o => o && o.t && !/^#/.test(o.t)) : [];
+}
+/* every place on the home page that points at a request option */
+function homeRefs(H, fn) {
+  ((H && H.sections) || []).forEach(s => {
+    if (s.type === "campaigns") ["a", "b"].forEach(k => (s.data[k] || []).forEach(c => fn(c, "pick", "picks")));
+    if (s.type === "band") { fn(s.data, "pick", "picks"); fn(s.data, "who", "who"); }
+  });
+}
+async function publish(id, json, note) {
+  const batch = F.writeBatch(db);
+  batch.set(F.doc(db, "siteContent", id), { json, updatedAt: F.serverTimestamp() });
+  batch.set(F.doc(F.collection(db, "siteHistory")), { kind: id, json, at: F.serverTimestamp(), note: String(note || "").slice(0, 300), by: (USER && USER.email || "").slice(0, 120) });
+  await batch.commit();
+  ED[id].saved = json; ED[id].pub = json;
+  try { localStorage.setItem("waraq-content-" + id, json); } catch {}
+}
+const isDirty = (id) => ED[id].data && JSON.stringify(ED[id].data) !== ED[id].saved;
+const anyDirty = () => isDirty("home") || isDirty("request");
+window.addEventListener("beforeunload", (e) => { if (anyDirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+/* =============== editor schema =============== */
+const S = (k, l, t = "text", ex = {}) => ({ k, l, t, ...ex });
+const TITLE = S("title", "العنوان", "text", { title: true }), SUB = S("sub", "السطر تحت العنوان");
+const L = (k, l, item, tpl, tk) => S(k, l, "list", { item, tpl, tk });
+const TYPES = {
+  hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta1", "زر الطلب"), S("cta2", "الزر الثاني (يودّي للحملات)"),
+      L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text"), S("tocTitle", "عنوان الفهرس")] },
+  services: { name: "الخدمات", fields: [TITLE, SUB, L("items", "الخدمات", [S("title", "اسم الخدمة", "text", { title: true }), S("text", "الوصف", "area"), S("tags", "الوسوم", "text", { hint: "افصلي بينها بفاصلة ،" })], { title: "خدمة جديدة", text: "", tags: "" }, "title")],
+    make: () => ({ title: "خدماتنا", sub: "", items: [{ title: "خدمة جديدة", text: "", tags: "" }] }) },
+  campaigns: { name: "الحملات الجاهزة", unique: true, fields: [TITLE, SUB, S("tabA", "اسم التبويب الأول"), S("tabB", "اسم التبويب الثاني"), S("button", "نص زر الحملة"),
+      L("a", "حملات التبويب الأول", null, null, "title"), L("b", "حملات التبويب الثاني", null, null, "title")],
+    make: () => ({ title: "حملات جاهزة", sub: "", tabA: "للمؤلفين", tabB: "لدور النشر", button: "اطلب هذه الحملة", a: [], b: [] }) },
+  cols: { name: "أعمدة", fields: [TITLE, SUB, L("items", "الأعمدة", [S("title", "العنوان", "text", { title: true }), S("text", "النص", "area")], { title: "عنوان جديد", text: "" }, "title")],
+    make: () => ({ title: "لماذا نحن", sub: "", items: [{ title: "عنوان", text: "" }, { title: "عنوان", text: "" }, { title: "عنوان", text: "" }] }) },
+  steps: { name: "خطوات", fields: [TITLE, SUB, L("items", "الخطوات", [S("title", "الخطوة", "text", { title: true }), S("text", "الشرح", "area")], { title: "خطوة جديدة", text: "" }, "title")],
+    make: () => ({ title: "كيف نعمل", sub: "", items: [{ title: "الخطوة الأولى", text: "" }, { title: "الخطوة الثانية", text: "" }, { title: "الخطوة الثالثة", text: "" }] }) },
+  band: { name: "شريط دعوة", fields: [S("title", "العنوان", "text", { title: true }), S("text", "النص", "area"), S("button", "نص الزر"), S("who", "يختار في صفحة الطلب «أنت»", "ref", { src: "who" }), S("pick", "يختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" })],
+    make: () => ({ title: "عنوان الشريط", text: "", button: "اطلب خدمة", who: "", pick: "" }) },
+  faq: { name: "أسئلة شائعة", fields: [TITLE, SUB, L("items", "الأسئلة", [S("q", "السؤال", "text", { title: true }), S("a", "الجواب", "area")], { q: "سؤال جديد؟", a: "" }, "q")],
+    make: () => ({ title: "أسئلة شائعة", sub: "", items: [{ q: "سؤال جديد؟", a: "" }] }) },
+  text: { name: "نص حر", fields: [TITLE, SUB, S("text", "النص", "area", { rows: 8, hint: "سطر فاضي بين الفقرات" })], make: () => ({ title: "عنوان", sub: "", text: "" }) },
+  quotes: { name: "آراء العملاء", fields: [TITLE, SUB, L("items", "الآراء", [S("quote", "الرأي", "area"), S("name", "الاسم", "text", { title: true }), S("role", "الصفة أو الكتاب")], { quote: "", name: "اسم العميل", role: "" }, "name")],
+    make: () => ({ title: "قالوا عنا", sub: "", items: [{ quote: "", name: "اسم العميل", role: "" }] }) },
+  request: { name: "قسم اطلب خدمة", unique: true, fields: [TITLE, SUB, S("boxTitle", "عنوان المربع"), S("boxText", "نص المربع", "area"), S("button", "نص الزر"), S("waButton", "زر الواتساب"), S("socialText", "نص الحسابات")],
+    make: () => WC.defaults("home").sections.find(s => s.type === "request").data },
+  join: { name: "انضم كمسوق", unique: true, fields: [TITLE, SUB, S("button", "زر الإرسال"), S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area")],
+    make: () => WC.defaults("home").sections.find(s => s.type === "join").data }
+};
+const CARD = [S("label", "الوسم الصغير"), S("title", "اسم الحملة", "text", { title: true }), S("text", "الوصف"), S("items", "المميزات", "area", { hint: "كل سطر ميزة" }), S("pick", "تنختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" }), S("star", "تمييزها (الأكثر طلبًا)", "bool")];
+TYPES.campaigns.fields[5] = L("a", "حملات التبويب الأول", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
+TYPES.campaigns.fields[6] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
+const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("tagline", "الوصف القصير"), S("cta", "زر «اطلب خدمة» في الأعلى"), S("whatsapp", "رقم الواتساب", "text", { hint: "بالصيغة الدولية مثل 9665XXXXXXXX. فاضي = أزرار الواتساب مخفية", ltr: true }),
+  S("handle", "اسم الحساب", "text", { ltr: true }), S("domain", "الدومين", "text", { ltr: true }), S("year", "سنة الحقوق"),
+  L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name")];
+const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"), S("description", "وصف الصفحة في نتائج البحث", "area")];
+
+const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"]];
+const FTN = Object.fromEntries(FTYPES);
+const CORE_NAMES = { who:"الصفة (كاتب / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
+const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("agree", "النص تحت زر الإرسال", "area"),
+  S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area"), S("afterTitle", "عنوان «بعد ما ترسل الطلب»"),
+  L("after", "خطوات «بعد ما ترسل الطلب»", [S("title", "الخطوة", "text", { title: true }), S("text", "الشرح")], { title: "خطوة", text: "" }, "title")];
+
+/* =============== editor: generic form builder =============== */
+const getP = (o, p) => p === "" ? o : p.split(".").reduce((a, k) => a == null ? a : a[k], o);
+function setP(o, p, v) { const ks = p.split("."), last = ks.pop(); const t = ks.reduce((a, k) => a[k], o); t[last] = v; }
+const uid = (pre) => pre + Math.random().toString(36).slice(2, 8);
+function ops(path, i, n, item, opts = {}) {
+  return `<span class="ops">
+    <button class="ib" type="button" data-op="up" data-p="${path}" data-i="${i}" title="فوق" aria-label="تحريك لفوق"${i === 0 ? " disabled" : ""}>${ICON.up}</button>
+    <button class="ib" type="button" data-op="down" data-p="${path}" data-i="${i}" title="تحت" aria-label="تحريك لتحت"${i === n - 1 ? " disabled" : ""}>${ICON.down}</button>
+    <button class="ib" type="button" data-op="hide" data-p="${path}" data-i="${i}" title="${item.hidden ? "إظهار" : "إخفاء"}" aria-label="${item.hidden ? "إظهار" : "إخفاء"}"${opts.noHide ? " disabled" : ""}>${item.hidden ? ICON.off : ICON.eye}</button>
+    <button class="ib" type="button" data-op="del" data-p="${path}" data-i="${i}" title="حذف" aria-label="حذف"${opts.noDel ? " disabled" : ""}>${ICON.del}</button></span>`;
+}
+function inputHTML(f, base, obj) {
+  const p = (base ? base + "." : "") + f.k, v = obj ? obj[f.k] : "", id = "e-" + p.replace(/\./g, "-");
+  const hint = f.hint ? ` <small>(${esc(f.hint)})</small>` : "";
+  if (f.t === "list") return listHTML(f, p, v || []);
+  if (f.t === "bool") return `<label class="chk"><input type="checkbox" data-p="${p}"${v ? " checked" : ""}>${esc(f.l)}</label>`;
+  if (f.t === "area") return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><textarea id="${id}" data-p="${p}" rows="${f.rows || 3}">${esc(v)}</textarea></div>`;
+  if (f.t === "ref") {
+    const os = refOptions(f.src), hit = os.find(o => o.t === v) || os.find(o => sameRef(v, o.t));
+    const opt = (val, lab, sel) => `<option value="${esc(val)}"${sel ? " selected" : ""}>${esc(lab)}</option>`;
+    return `<div class="fld"><label for="${id}">${esc(f.l)} <small>(الخيارات من «تعديل صفحة الطلبات»)</small></label><select id="${id}" data-p="${p}">` +
+      opt("", "بدون", !v) + os.map(o => opt(o.t, o.t + (o.hidden ? " (مخفي)" : ""), hit === o)).join("") +
+      (v && !hit ? opt(v, v + " (مو موجود في صفحة الطلبات)", true) : "") + `</select></div>`;
+  }
+  if (f.t === "select") return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><select id="${id}" data-p="${p}"${f.re ? ' data-re="1"' : ""}>${f.opts.map(([a, b]) => `<option value="${esc(a)}"${a === v ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></div>`;
+  return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><input type="text" id="${id}" data-p="${p}" value="${esc(v)}"${f.title ? ' data-title="1"' : ""}${f.ltr ? ' dir="ltr"' : ""}></div>`;
+}
+function fieldsHTML(schema, base, obj) { return schema.map(f => inputHTML(f, base, obj)).join(""); }
+function listHTML(f, p, arr) {
+  const open = OPEN[CUR.id];
+  return `<div class="lst"><h4>${esc(f.l)} <span class="hint">${toAr(arr.length)}</span></h4>` +
+    arr.map((it, i) => { const k = p + "." + i, t = (it && it[f.tk]) || "عنصر " + toAr(i + 1);
+      return `<details class="card${it.hidden ? " off" : ""}" data-k="${k}"${open[k] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(t)}</span></span>${ops(p, i, arr.length, it)}</summary><div class="body">${fieldsHTML(f.item, k, it)}</div></details>`;
+    }).join("") + `<div class="addrow"><button class="btn line sm" type="button" data-op="add" data-p="${p}" data-tpl='${esc(JSON.stringify(f.tpl))}'>+ إضافة</button></div></div>`;
+}
+
+/* ---- home panel ---- */
+function homePanel(D) {
+  const open = OPEN.home, n = D.sections.length;
+  let h = `<details class="card" data-k="brand"${open.brand ? " open" : ""}><summary><span class="t">معلومات عامة <small>الاسم، الواتساب، الحسابات، البحث</small></span></summary><div class="body">${fieldsHTML(BRAND, "brand", D.brand)}
+    <div class="lst"><h4>الظهور في قوقل</h4>${fieldsHTML(SEO, "seo", D.seo || {})}</div></div></details>`;
+  h += `<h4 class="hint" style="margin:16px 2px 8px">أقسام الصفحة بالترتيب</h4>`;
+  h += D.sections.map((s, i) => {
+    const T = TYPES[s.type] || { name: s.type, fields: [] }, k = "sec:" + s.id;
+    return `<details class="card${s.hidden ? " off" : ""}" data-k="${k}" data-sec="${i}"${open[k] ? " open" : ""}><summary><span class="t">${esc(T.name)}<small class="tt">${esc(s.data.title || "")}</small></span>${ops("sections", i, n, s)}</summary><div class="body">
+      ${T.nav === false ? "" : `<div class="two">${inputHTML(S("nav", "اسمه في القائمة العلوية", "text", { hint: "فاضي = ما يظهر" }), "sections." + i, s)}${inputHTML(S("toc", "اسمه في الفهرس", "text", { hint: "فاضي = ما يظهر" }), "sections." + i, s)}</div>`}
+      ${fieldsHTML(T.fields, "sections." + i + ".data", s.data)}</div></details>`;
+  }).join("");
+  const have = new Set(D.sections.map(s => s.type));
+  const addable = Object.entries(TYPES).filter(([t, T]) => T.make && !(T.unique && have.has(t)));
+  h += `<div class="addrow" style="margin:6px 0 30px"><select id="sec-type" aria-label="نوع القسم">${addable.map(([t, T]) => `<option value="${t}">${esc(T.name)}</option>`).join("")}</select><button class="btn sm" type="button" data-op="sec-add">+ إضافة قسم</button></div>`;
+  return h;
+}
+
+/* ---- request form panel ---- */
+function fieldEditor(f, base, pi, parts) {
+  const core = WC.CORE[f.key], locked = WC.LOCKED[f.key];
+  const typeRow = core ? `<p class="hint" style="margin:-4px 0 10px">نوعه: ${esc(FTN[f.type] || f.type)}. حقل أساسي${f.key === "name" || f.key === "book" ? "، تستخدمه «الموافقة» في لوحة المسوقين" : ""}.</p>`
+    : inputHTML(S("type", "نوع الحقل", "select", { opts: FTYPES, re: true }), base, f);
+  const isChoice = !!WC.CHOICE[f.type];
+  const optsHTML = isChoice
+    ? listHTML(L("options", "الخيارات" + (f.type === "select" ? " (خيار يبدأ بـ # = عنوان مجموعة)" : ""),
+        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين", "bool")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
+    : f.type === "text" ? inputHTML(S("options", "اقتراحات تطلع للعميل", "area", { hint: "اختياري، كل سطر اقتراح", rows: 3 }), base, f) : "";
+  return inputHTML(S("label", "اسم الحقل", "text", { title: true }), base, f) +
+    (f.key === "name" ? inputHTML(S("altLabel", "اسمه لما يختار الخيار الثاني في «أنت»", "text", { hint: "مثل: اسم دار النشر" }), base, f) : "") +
+    typeRow + inputHTML(S("hint", "ملاحظة صغيرة جنب الاسم"), base, f) +
+    (["radio", "checks"].includes(f.type) ? "" : inputHTML(S("placeholder", "النص الرمادي داخل الخانة"), base, f)) +
+    optsHTML +
+    `<div class="two">${["textarea", "radio", "checks"].includes(f.type) ? "<span></span>" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)}
+      <div class="fld"><label for="mv-${f.id}">نقله لقسم ثاني</label><select id="mv-${f.id}" data-move="${pi}" data-fid="${f.id}">${parts.map((p, j) => `<option value="${j}"${j === pi ? " selected" : ""}>${esc(p.title || "قسم " + toAr(j + 1))}</option>`).join("")}</select></div></div>` +
+    (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", "إلزامي", "bool"), base, f));
+}
+function requestPanel(D) {
+  const open = OPEN.request;
+  let h = `<details class="card" data-k="texts"${open.texts ? " open" : ""}><summary><span class="t">نصوص الصفحة <small>العنوان، الأزرار، رسالة النجاح</small></span></summary><div class="body">${fieldsHTML(REQ_TEXTS, "", D)}</div></details>`;
+  h += `<h4 class="hint" style="margin:16px 2px 8px">أقسام النموذج وحقوله</h4>`;
+  const used = new Set(D.parts.flatMap(p => p.fields.map(f => f.key)));
+  h += D.parts.map((p, i) => {
+    const k = "part:" + p.id, hasLock = p.fields.some(f => WC.LOCKED[f.key]);
+    const flds = p.fields.map((f, j) => {
+      const fk = "fld:" + f.id, lock = WC.LOCKED[f.key];
+      const toDash = Array.isArray(f.options) && f.options.some(o => o && o.dash && !o.hidden);
+      const tags = `<span class="tag">${esc(FTN[f.type] || f.type)}</span>${toDash ? '<span class="tag lock">← لوحة المسوقين</span>' : ""}${lock ? '<span class="tag lock">أساسي</span>' : f.required ? '<span class="tag">إلزامي</span>' : ""}`;
+      return `<details class="card${f.hidden ? " off" : ""}" data-k="${fk}" data-fid="${f.id}"${open[fk] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(f.label || "حقل")}</span></span>${tags}${ops("parts." + i + ".fields", j, p.fields.length, f, { noHide: lock, noDel: lock })}</summary>
+        <div class="body">${fieldEditor(f, "parts." + i + ".fields." + j, i, D.parts)}</div></details>`;
+    }).join("");
+    const missing = Object.keys(WC.CORE).filter(c => !used.has(c));
+    return `<details class="card${p.hidden ? " off" : ""}" data-k="${k}" data-part="${i}"${open[k] ? " open" : ""}><summary><span class="t">${esc(p.title || "قسم")}<small>${toAr(p.fields.length)} حقول</small></span>${ops("parts", i, D.parts.length, p, { noHide: hasLock, noDel: hasLock })}</summary><div class="body">
+      ${inputHTML(S("title", "عنوان القسم", "text", { title: true }), "parts." + i, p)}<div class="lst"><h4>الحقول</h4>${flds}
+      <div class="addrow"><button class="btn line sm" type="button" data-op="fld-add" data-pi="${i}">+ حقل جديد</button>
+      ${missing.length ? `<select data-core="${i}" aria-label="إرجاع حقل أساسي"><option value="">+ إرجاع حقل أساسي محذوف</option>${missing.map(c => `<option value="${c}">${esc(CORE_NAMES[c])}</option>`).join("")}</select>` : ""}</div></div></div></details>`;
+  }).join("");
+  h += `<div class="addrow" style="margin:6px 0 30px"><button class="btn sm" type="button" data-op="part-add">+ إضافة قسم للنموذج</button></div>`;
+  return h;
+}
+
+/* =============== editor: state, preview, events =============== */
+const panel = $("panel"), frame = $("frame-prev");
+let undoTimer = null, previewTimer = null;
+async function openEditor(id) {
+  const E = ED[id]; CUR = E;
+  $("ed-title").textContent = E.title; $("ed-note").value = "";
+  panel.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
+  try { await Promise.all([loadContent("home"), loadContent("request")]); }
+  catch (err) { panel.innerHTML = `<div class="empty"><h2>تعذّر التحميل</h2><p>${esc(err.code || err.message)}</p></div>`; return; }
+  if (CUR !== E) return;
+  $("ed-draft").innerHTML = E.draft ? `<div class="restore"><span>عندك تعديلات من قبل ما انحفظت على هذي الصفحة.</span><span class="acts"><button class="btn sm" type="button" id="dr-use">استرجاعها</button><button class="btn line sm" type="button" id="dr-drop">تجاهلها</button></span></div>` : "";
+  renderPanel();
+  const want = E.page + "?preview=1";
+  if (!frame.src.endsWith(want)) frame.src = want; else sendPreview();
+}
+$("ed-draft").addEventListener("click", (e) => {
+  const E = CUR; if (!E) return;
+  if (e.target.id === "dr-use") { pushUndo(); E.data = JSON.parse(E.draft); E.draft = null; $("ed-draft").innerHTML = ""; changed(true); }
+  if (e.target.id === "dr-drop") { E.draft = null; try { localStorage.removeItem("waraq-draft-" + E.id); } catch {} $("ed-draft").innerHTML = ""; }
+});
+function renderPanel() {
+  const y = panel.scrollTop;
+  panel.innerHTML = CUR.id === "home" ? homePanel(CUR.data) : requestPanel(CUR.data);
+  panel.scrollTop = y; updateState();
+}
+function updateState() {
+  if (!CUR) return;
+  const d = isDirty(CUR.id);
+  $("ed-state").textContent = d ? "تعديلات ما انحفظت" : "كل شي محفوظ ومنشور"; $("ed-state").className = "state" + (d ? " dirty" : "");
+  $("ed-save").disabled = !d; $("ed-revert").disabled = !d; $("ed-undo").disabled = !CUR.undo.length;
+  document.querySelectorAll("[data-dirty]").forEach(el => el.hidden = !isDirty(el.dataset.dirty));
+  try { if (d) localStorage.setItem("waraq-draft-" + CUR.id, JSON.stringify(CUR.data)); else localStorage.removeItem("waraq-draft-" + CUR.id); } catch {}
+}
+function pushUndo() { CUR.undo.push(JSON.stringify(CUR.data)); if (CUR.undo.length > 60) CUR.undo.shift(); }
+function changed(rerender) {
+  if (rerender) renderPanel(); else updateState();
+  clearTimeout(previewTimer); previewTimer = setTimeout(sendPreview, rerender ? 0 : 200);
+}
+function sendPreview(focus) {
+  if (!CUR || !frame.contentWindow) return;
+  frame.contentWindow.postMessage({ type: "waraq-content", id: CUR.id, content: CUR.data, home: ED.home.data, request: ED.request.data, focus }, "*");
+}
+function focusPreview(details) {
+  if (!frame.contentWindow) return;
+  if (CUR.id === "home") { const s = details.dataset.sec ?? (details.dataset.k === "brand" ? "brand" : null); if (s != null) frame.contentWindow.postMessage({ type: "waraq-focus", sec: s }, "*"); }
+  else { const sel = details.dataset.fid ? { field: details.dataset.fid } : details.dataset.part != null ? { part: +details.dataset.part } : details.dataset.k === "texts" ? { box: "intro" } : null;
+    if (sel) frame.contentWindow.postMessage({ type: "waraq-focus", sel }, "*"); }
+}
+window.addEventListener("message", (e) => {
+  const m = e.data || {};
+  if (e.source === $("modal-frame").contentWindow) { if (m.type === "waraq-ready") sendModal(); return; }
+  if (e.source !== frame.contentWindow || !CUR) return;
+  if (m.type === "waraq-ready") sendPreview();
+  if (m.type === "waraq-pick") {
+    let key = null;
+    if (m.id === "home") key = m.sec === "brand" ? "brand" : CUR.data.sections[+m.sec] && "sec:" + CUR.data.sections[+m.sec].id;
+    else if (m.sel) {
+      if (m.sel.field) { const pi = CUR.data.parts.findIndex(p => p.fields.some(f => f.id === m.sel.field)); if (pi > -1) { OPEN.request["part:" + CUR.data.parts[pi].id] = true; key = "fld:" + m.sel.field; } }
+      else if (m.sel.part != null && CUR.data.parts[m.sel.part]) key = "part:" + CUR.data.parts[m.sel.part].id;
+      else if (m.sel.box) key = "texts";
+    }
+    if (!key) return;
+    OPEN[CUR.id][key] = true; renderPanel();
+    const el = panel.querySelector(`[data-k="${CSS.escape(key)}"]`);
+    if (el) { el.scrollIntoView({ block: "start", behavior: "smooth" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  }
+});
+panel.addEventListener("toggle", (e) => {
+  const d = e.target; if (!d.dataset || !d.dataset.k || !CUR) return;
+  OPEN[CUR.id][d.dataset.k] = d.open; if (d.open) focusPreview(d);
+}, true);
+panel.addEventListener("input", (e) => {
+  const el = e.target, p = el.dataset.p; if (!p || !CUR) return;
+  if (!undoTimer) pushUndo(); clearTimeout(undoTimer); undoTimer = setTimeout(() => undoTimer = null, 900);
+  setP(CUR.data, p, el.type === "checkbox" ? el.checked : el.value);
+  if (/\.fields\.\d+\.type$/.test(p)) WC.normField(getP(CUR.data, p.slice(0, -5)));
+  if (/\.options\.\d+\.dash$/.test(p)) el.dataset.re = "1";
+  if (el.dataset.title) { const t = el.closest(".card")?.querySelector(":scope>summary .tt"); if (t) t.textContent = el.value; }
+  changed(!!el.dataset.re);
+});
+panel.addEventListener("change", (e) => {
+  const el = e.target; if (!CUR) return;
+  if (el.dataset.move != null) {   // move field to another part
+    pushUndo(); const from = +el.dataset.move, to = +el.value, P = CUR.data.parts;
+    const k = P[from].fields.findIndex(f => f.id === el.dataset.fid); const [f] = P[from].fields.splice(k, 1); P[to].fields.push(f);
+    OPEN.request["part:" + P[to].id] = true; OPEN.request["fld:" + f.id] = true; changed(true); toast("انتقل الحقل لقسم «" + (P[to].title || "") + "».");
+  }
+  if (el.dataset.core != null && el.value) {   // bring back a core field
+    pushUndo(); const key = el.value, def = WC.defaults("request").parts.flatMap(p => p.fields).find(f => f.key === key) || { key, type: WC.CORE[key], label: CORE_NAMES[key] };
+    const f = { ...def, id: uid("f-"), hidden: false }; CUR.data.parts[+el.dataset.core].fields.push(f);
+    OPEN.request["fld:" + f.id] = true; changed(true);
+  }
+});
+panel.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-op]"); if (!b || !CUR) return;
+  e.preventDefault(); e.stopPropagation();
+  const op = b.dataset.op, p = b.dataset.p, i = +b.dataset.i, D = CUR.data;
+  if (op === "del") { if (!arm(b, "اضغطي الحذف مرة ثانية للتأكيد. وتقدرين تتراجعين بزر «تراجع».")) return; }
+  pushUndo();
+  if (op === "sec-add") {
+    const t = $("sec-type").value, T = TYPES[t]; if (!T) return;
+    const data = T.make(), s = { id: uid(t + "-"), type: t, nav: "", toc: data.title || "", data };
+    D.sections.splice(Math.max(0, D.sections.length - 2), 0, s); OPEN.home["sec:" + s.id] = true;
+    changed(true); setTimeout(() => panel.querySelector(`[data-k="sec:${s.id}"]`)?.scrollIntoView({ block: "center" }), 50); return;
+  }
+  if (op === "part-add") { const pt = { id: uid("p"), title: "قسم جديد", fields: [] }; D.parts.push(pt); OPEN.request["part:" + pt.id] = true; changed(true); return; }
+  if (op === "fld-add") { const f = { id: uid("f-"), key: uid("c_"), type: "text", label: "حقل جديد", width: "half" }; D.parts[+b.dataset.pi].fields.push(f); OPEN.request["fld:" + f.id] = true; changed(true); return; }
+  const arr = getP(D, p); if (!Array.isArray(arr)) return;
+  if (op === "add") { arr.push(JSON.parse(b.dataset.tpl)); OPEN[CUR.id][p + "." + (arr.length - 1)] = true; }
+  else if (op === "up" && i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+  else if (op === "down" && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
+  else if (op === "hide") arr[i].hidden = !arr[i].hidden;
+  else if (op === "del") arr.splice(i, 1);
+  changed(true);
+});
+$("ed-undo").addEventListener("click", () => { if (!CUR || !CUR.undo.length) return; CUR.data = JSON.parse(CUR.undo.pop()); changed(true); });
+$("ed-revert").addEventListener("click", (e) => { if (!CUR || !arm(e.currentTarget, "اضغطي مرة ثانية: ترجع الصفحة لآخر نسخة محفوظة.")) return; pushUndo(); CUR.data = JSON.parse(CUR.saved); changed(true); });
+$("ed-save").addEventListener("click", async () => {
+  if (!CUR) return; const E = CUR, btn = $("ed-save"); let json = JSON.stringify(E.data);
+  btn.disabled = true; btn.textContent = "جارٍ النشر…";
+  try {
+    let extra = "";
+    if (E.id === "request") {
+      reqFields(E.data).forEach(f => { if (Array.isArray(f.options)) f.options.forEach(o => { if (o && !o.id) o.id = uid("o"); }); });
+      const before = reqFields(JSON.parse(E.saved)), ren = [];
+      reqFields(E.data).forEach(f => { if (!Array.isArray(f.options) || !["picks", "who"].includes(f.key)) return;
+        const old = before.find(x => x.key === f.key); if (!old || !Array.isArray(old.options)) return;
+        f.options.forEach(o => { const was = old.options.find(x => x && x.id === o.id); if (was && was.t !== o.t) ren.push([f.key, was.t, o.t]); }); });
+      json = JSON.stringify(E.data);
+      await publish(E.id, json, $("ed-note").value.trim() || "تعديل");
+      if (ren.length) {
+        const H = ED.home, wasClean = !isDirty("home"); let n = 0;
+        homeRefs(H.data, (obj, k, src) => { const r = ren.find(x => x[0] === src && sameRef(obj[k], x[1])); if (r) { obj[k] = r[2]; n++; } });
+        if (n && wasClean) { await publish("home", JSON.stringify(H.data), "تحديث أسماء الخيارات تلقائيًا"); extra = " وتحدّث الاسم الجديد في الصفحة الأساسية بعد."; }
+        else if (n) { try { localStorage.setItem("waraq-draft-home", JSON.stringify(H.data)); } catch {} extra = " وتحدّث الاسم في الصفحة الأساسية، احفظيها من «تعديل الصفحة الأساسية»."; }
+      }
+    } else await publish(E.id, json, $("ed-note").value.trim() || "تعديل");
+    $("ed-note").value = ""; toast("انحفظ ونُشر. التعديل ظاهر في الموقع الحين." + extra);
+  }
+  catch (err) { toast("ما انحفظ: " + (err.code || err.message)); }
+  finally { btn.textContent = "حفظ ونشر"; updateState(); }
+});
+document.querySelectorAll("[data-dev]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-dev]").forEach(x => x.setAttribute("aria-pressed", x === b)); $("prev").classList.toggle("mobile", b.dataset.dev === "mobile");
+}));
+$("ed-show").addEventListener("click", () => $("prev").classList.add("open"));
+$("ed-hide").addEventListener("click", () => $("prev").classList.remove("open"));
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && (VIEW === "home" || VIEW === "form")) { e.preventDefault(); if (!$("ed-save").disabled) $("ed-save").click(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && (VIEW === "home" || VIEW === "form") && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); $("ed-undo").click(); }
+  if (e.key === "Escape" && !$("modal").hidden) closeModal();
+});
+
+/* =============== history =============== */
+const KIND = { home: "الصفحة الأساسية", request: "صفحة الطلبات" };
+let HIST = [], hKind = "all", MODAL = null;
+async function loadHistory() {
+  $("hist").innerHTML = '<div class="skel"></div><div class="skel"></div>'; $("h-empty").hidden = true;
+  try {
+    await Promise.all([loadContent("home"), loadContent("request")]);
+    const s = await F.getDocs(F.query(F.collection(db, "siteHistory"), F.orderBy("at", "desc"), F.limit(300)));
+    HIST = s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    renderHistory();
+  } catch (err) { $("hist").innerHTML = `<li><span></span><span class="what"><b>تعذّر التحميل</b><p>${esc(err.code || err.message)}</p></span></li>`; }
+}
+function renderHistory() {
+  const chip = (k, l, n) => `<button type="button" data-hk="${k}" aria-pressed="${hKind === k}">${l} <span class="num">${toAr(n)}</span></button>`;
+  $("h-chips").innerHTML = chip("all", "الكل", HIST.length) + Object.entries(KIND).map(([k, l]) => chip(k, l, HIST.filter(h => h.kind === k).length)).join("");
+  const list = HIST.filter(h => hKind === "all" || h.kind === hKind);
+  $("h-empty").hidden = !!list.length;
+  const curSeen = {};
+  $("hist").innerHTML = list.map(h => {
+    const isCur = !curSeen[h.kind] && h.json === ED[h.kind].pub; if (isCur) curSeen[h.kind] = 1;
+    return `<li><span class="when num">${esc(when(h.at))}</span><span class="what"><b>${esc(KIND[h.kind] || h.kind)}</b>${isCur ? '<span class="cur">المنشورة الحين</span>' : ""}<p>${esc(h.note || "بدون وصف")}</p></span>
+      <span class="acts"><button class="btn line sm" type="button" data-hv="${h.id}">معاينة</button>${isCur ? "" : `<button class="btn sm" type="button" data-hr="${h.id}">استرجاع</button>`}<button class="ib" type="button" data-hd="${h.id}" title="حذف النسخة" aria-label="حذف النسخة">${ICON.del}</button></span></li>`;
+  }).join("");
+}
+$("h-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-hk]"); if (b) { hKind = b.dataset.hk; renderHistory(); } });
+async function restore(kind, json, note, btn) {
+  if (isDirty(kind) && !confirm("عندك تعديلات ما انحفظت على " + KIND[kind] + "، بتنمسح بالاسترجاع. تكملين؟")) return;
+  if (btn) btn.disabled = true;
+  try {
+    await publish(kind, json, note);
+    ED[kind].data = prep(kind, json); ED[kind].saved = JSON.stringify(ED[kind].data); ED[kind].undo = []; updateState();
+    toast("رجعت " + KIND[kind] + " لهذي النسخة، وصارت منشورة."); closeModal(); loadHistory();
+  } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); }
+  finally { if (btn) btn.disabled = false; }
+}
+$("hist").addEventListener("click", async (e) => {
+  const v = e.target.closest("[data-hv]"), r = e.target.closest("[data-hr]"), d = e.target.closest("[data-hd]");
+  const h = HIST.find(x => x.id === (v || r || d)?.dataset[v ? "hv" : r ? "hr" : "hd"]); if (!h) return;
+  if (v) openModal(h);
+  if (r) { if (!arm(r, "اضغطي «استرجاع» مرة ثانية للتأكيد.")) return; restore(h.kind, h.json, "استرجاع نسخة " + when(h.at), r); }
+  if (d) { if (!arm(d, "اضغطي مرة ثانية لحذف هذي النسخة من السجل.")) return;
+    try { await F.deleteDoc(F.doc(db, "siteHistory", h.id)); HIST = HIST.filter(x => x !== h); renderHistory(); } catch (err) { toast("ما انحذفت: " + (err.code || err.message)); } }
+});
+document.querySelectorAll("[data-orig]").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.orig; if (!arm(b, "اضغطي مرة ثانية: ترجع " + KIND[k] + " للنسخة الأصلية (والحالية تبقى في السجل).")) return;
+  restore(k, JSON.stringify(WC.defaults(k)), "رجوع للنسخة الأصلية", b);
+}));
+function openModal(h) {
+  MODAL = h; $("modal-t").textContent = KIND[h.kind] + " · " + when(h.at) + (h.note ? " · " + h.note : "");
+  $("modal-restore").hidden = h.json === ED[h.kind].pub;
+  $("modal").hidden = false; $("modal-frame").src = (h.kind === "home" ? "index.html" : "request.html") + "?preview=1&v=" + h.id;
+}
+function sendModal() { if (MODAL) $("modal-frame").contentWindow.postMessage({ type: "waraq-content", id: MODAL.kind, content: JSON.parse(MODAL.json), home: ED.home.data, request: ED.request.data }, "*"); }
+function closeModal() { $("modal").hidden = true; $("modal-frame").src = "about:blank"; MODAL = null; }
+$("modal-close").addEventListener("click", closeModal);
+$("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
+
+/* =============== settings =============== */
+const NOTIFY = F.doc(db, "siteSettings", "notify");
+const okEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const nmsg = (t, bad) => { $("ntf-msg").textContent = t; $("ntf-msg").className = "saved" + (bad ? " err" : ""); };
+async function loadSettings() { try { const s = await F.getDoc(NOTIFY); $("ntf").value = s.exists() ? (s.data().email || "") : ""; } catch {} }
+$("ntf-save").addEventListener("click", async () => {
+  const v = $("ntf").value.trim(); if (v && !okEmail(v)) return nmsg("البريد غير صحيح.", true);
+  $("ntf-save").disabled = true; nmsg("");
+  try { await F.setDoc(NOTIFY, { email: v, updatedAt: F.serverTimestamp() }); nmsg(v ? "انحفظ. اضغطي «إرسال إيميل تجربة»." : "انحفظ. التنبيهات متوقفة."); }
+  catch (err) { nmsg("ما انحفظ: " + (err.code || err.message), true); } finally { $("ntf-save").disabled = false; }
+});
+$("ntf-test").addEventListener("click", async () => {
+  const v = $("ntf").value.trim(); if (!okEmail(v)) return nmsg("اكتبي البريد واحفظيه أول.", true);
+  $("ntf-test").disabled = true; nmsg("جارٍ الإرسال…");
+  try {
+    const r = await fetch("https://formsubmit.co/ajax/" + v, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({ _subject: "تجربة تنبيهات وكالة ورق", _template: "box", _captcha: "false", message: "هذا إيميل تجربة من صفحة إدارة الوكالة. إذا وصلك، التنبيهات شغالة." }) });
+    const j = await r.json().catch(() => ({}));
+    if (String(j.success) === "true") nmsg("انرسل. شيّكي على بريدك.");
+    else if (/activat/i.test(j.message || "")) nmsg("وصلك إيميل تفعيل من FormSubmit. افتحيه واضغطي Activate Form، وبعدها جرّبي مرة ثانية.");
+    else nmsg("ما انرسل: " + (j.message || r.status), true);
+  } catch { nmsg("ما انرسل. تأكدي من الاتصال.", true); } finally { $("ntf-test").disabled = false; }
+});

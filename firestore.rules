@@ -1,77 +1,12 @@
 rules_version = '2';
 
-// قواعد حماية قاعدة بيانات وكالة ورق:
-// - الزائر يقدر "يضيف" طلبًا فقط، بحقول محددة وأطوال معقولة، وما يقدر يقرأ أي طلب.
-// - القراءة والتعديل والحذف للمشرفين فقط: كل مشرف له مستند في مجموعة admins باسم الـ UID حقه.
+// قاعدة بيانات مشروع الوكالة (waraq-agency) غير مستخدمة.
+// طلبات الموقع تُحفظ في قاعدة لوحة المسوقين (book-campaigns).
+// لذلك هذه القاعدة مقفلة بالكامل: لا أحد يقرأ ولا يكتب.
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-    function optStr(d, f, max) {
-      return !(f in d) || (d[f] is string && d[f].size() <= max);
-    }
-    function reqStr(d, f, min, max) {
-      return f in d && d[f] is string && d[f].size() >= min && d[f].size() <= max;
-    }
-    function strList(d, f, min, max) {
-      return f in d && d[f] is list && d[f].size() >= min && d[f].size() <= max;
-    }
-    function newEntry(d) {
-      return d.state == 'جديد'
-        && d.createdAt == request.time
-        && optStr(d, 'source', 100);
-    }
-    // المشرف يغيّر الحالة والملاحظة فقط
-    function adminEdit() {
-      return isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'adminNote', 'updatedAt'])
-        && request.resource.data.state in ['جديد', 'قيد المتابعة', 'تم الاتفاق', 'مكتمل', 'مغلق']
-        && optStr(request.resource.data, 'adminNote', 3000);
-    }
-
-    // طلبات الخدمة (المؤلفين ودور النشر)
-    match /requests/{id} {
-      allow create: if request.resource.data.keys().hasOnly(
-            ['name','contact','who','book','genre','status','date','where','picks','notes','state','createdAt','source'])
-        && reqStr(request.resource.data, 'name', 1, 120)
-        && reqStr(request.resource.data, 'contact', 3, 120)
-        && optStr(request.resource.data, 'who', 40)
-        && optStr(request.resource.data, 'book', 200)
-        && optStr(request.resource.data, 'genre', 200)
-        && optStr(request.resource.data, 'status', 40)
-        && optStr(request.resource.data, 'date', 200)
-        && optStr(request.resource.data, 'where', 200)
-        && strList(request.resource.data, 'picks', 1, 5)
-        && optStr(request.resource.data, 'notes', 3000)
-        && newEntry(request.resource.data);
-      allow read, delete: if isAdmin();
-      allow update: if adminEdit();
-    }
-
-    // طلبات انضمام المسوقين
-    match /marketers/{id} {
-      allow create: if request.resource.data.keys().hasOnly(
-            ['name','handle','contact','platforms','genre','views','price','license','state','createdAt','source'])
-        && reqStr(request.resource.data, 'name', 1, 120)
-        && reqStr(request.resource.data, 'handle', 1, 120)
-        && optStr(request.resource.data, 'contact', 120)
-        && strList(request.resource.data, 'platforms', 1, 4)
-        && optStr(request.resource.data, 'genre', 200)
-        && optStr(request.resource.data, 'views', 40)
-        && optStr(request.resource.data, 'price', 40)
-        && optStr(request.resource.data, 'license', 40)
-        && newEntry(request.resource.data);
-      allow read, delete: if isAdmin();
-      allow update: if adminEdit();
-    }
-
-    // كل مشرف يقدر يتأكد إنه مشرف (يقرأ مستنده هو فقط). الإضافة من لوحة Firebase يدويًا.
-    match /admins/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
