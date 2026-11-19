@@ -301,6 +301,7 @@ function inputHTML(f, base, obj) {
   const p = (base ? base + "." : "") + f.k, v = obj ? obj[f.k] : "", id = "e-" + p.replace(/\./g, "-");
   const hint = f.hint ? ` <small>(${esc(f.hint)})</small>` : "";
   if (f.t === "list") return listHTML(f, p, v || []);
+  if (f.t === "subs") return subsHTML(p, Array.isArray(v) ? v : []);
   if (f.t === "bool") return `<label class="chk"><input type="checkbox" data-p="${p}"${v ? " checked" : ""}>${esc(f.l)}</label>`;
   if (f.t === "area") return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><textarea id="${id}" data-p="${p}" rows="${f.rows || 3}">${esc(v)}</textarea></div>`;
   if (f.t === "ref") {
@@ -341,22 +342,28 @@ function homePanel(D) {
 }
 
 /* ---- request form panel ---- */
-/* «متى يظهر هذا الحقل؟»: f.when={f: id حقل الاختيار, o: [ids الخيارات]} */
-function whenSources(D, f) { return reqFields(D).filter(x => x !== f && WC.CHOICE[x.type] && Array.isArray(x.options)); }
+/* حقول تفصيلية داخل الخيار: تطلع تحته في صفحة الطلب لما يختاره العميل */
+function subsHTML(p, arr) {
+  const open = OPEN[CUR.id];
+  return `<div class="lst subs"><h4>تفاصيل تطلع لما يختار العميل هذا الخيار <span class="hint">${toAr(arr.length)}</span></h4>` +
+    arr.map((sf, i) => { const k = p + "." + i;
+      return `<details class="card${sf.hidden ? " off" : ""}" data-k="${k}"${open[k] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(sf.label || "حقل")}</span></span><span class="tag">${esc(FTN[sf.type] || sf.type)}</span>${sf.required ? '<span class="tag">إلزامي</span>' : ""}${ops(p, i, arr.length, sf)}</summary><div class="body">${subEditor(sf, k)}</div></details>`;
+    }).join("") + `<div class="addrow"><button class="btn line sm" type="button" data-op="sub-add" data-p="${p}">+ حقل تفصيلي</button></div></div>`;
+}
+function subEditor(f, base) {
+  const isChoice = !!WC.CHOICE[f.type];
+  return inputHTML(S("label", "اسم الحقل", "text", { title: true }), base, f) +
+    inputHTML(S("type", "نوع الحقل", "select", { opts: FTYPES, re: true }), base, f) +
+    inputHTML(S("hint", "ملاحظة صغيرة جنب الاسم"), base, f) +
+    (isChoice ? listHTML(L("options", "الخيارات", [S("t", "نص الخيار", "text", { title: true })], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
+      : inputHTML(S("placeholder", "النص الرمادي داخل الخانة"), base, f)) +
+    (["textarea", "radio", "checks"].includes(f.type) ? "" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)) +
+    inputHTML(S("required", "إلزامي (لما يظهر)", "bool"), base, f);
+}
+/* حقل مشروط قديم (f.when): نعرض اسم الخيار اللي يظهره */
 function whenNames(D, f) {
   const src = f.when && reqFields(D).find(x => x.id === f.when.f); if (!src) return [];
   return src.options.filter(o => o && (f.when.o || []).includes(o.id)).map(o => o.t);
-}
-function whenBlock(f, base, D) {
-  if (WC.LOCKED[f.key]) return "";
-  const srcs = whenSources(D, f), w = f.when || {}, src = srcs.find(x => x.id === w.f);
-  if (src) src.options.forEach(o => { if (o && !o.id) o.id = uid("o"); });
-  const list = src ? src.options.filter(o => o && o.t && !/^#/.test(o.t)) : [], on = w.o || [];
-  return `<div class="lst when"><h4>متى يظهر هذا الحقل؟</h4>
-    <div class="fld"><label for="wf-${f.id}">يظهر</label><select id="wf-${f.id}" data-wsrc="${base}"><option value="">دايمًا</option>${srcs.map(x => `<option value="${esc(x.id)}"${src === x ? " selected" : ""}>بس لما العميل يختار من «${esc(x.label || "حقل")}»</option>`).join("")}</select></div>
-    ${src ? `<div class="whenopts" role="group" aria-label="الخيارات اللي تظهره">${list.map(o => `<label class="chk"><input type="checkbox" data-wopt="${base}" value="${esc(o.id)}"${on.includes(o.id) ? " checked" : ""}>${esc(o.t)}${o.hidden ? " (مخفي)" : ""}</label>`).join("")}</div>
-      <p class="hint">${on.length ? "يطلع تحت اختيار العميل، ولو شال الاختيار يختفي وما يترسل." : "اختاري خيار واحد على الأقل، وإلا الحقل ما يطلع أبدًا."}</p>` : ""}
-  </div>`;
 }
 function fieldEditor(f, base, pi, parts) {
   const core = WC.CORE[f.key], locked = WC.LOCKED[f.key];
@@ -365,7 +372,7 @@ function fieldEditor(f, base, pi, parts) {
   const isChoice = !!WC.CHOICE[f.type];
   const optsHTML = isChoice
     ? listHTML(L("options", "الخيارات" + (f.type === "select" ? " (خيار يبدأ بـ # = عنوان مجموعة)" : ""),
-        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين", "bool")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
+        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين", "bool"), S("sub", "", "subs")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
     : f.type === "text" ? inputHTML(S("options", "اقتراحات تطلع للعميل", "area", { hint: "اختياري، كل سطر اقتراح", rows: 3 }), base, f) : "";
   return inputHTML(S("label", "اسم الحقل", "text", { title: true }), base, f) +
     (f.key === "name" ? inputHTML(S("altLabel", "اسمه لما يختار الخيار الثاني في «أنت»", "text", { hint: "مثل: اسم دار النشر" }), base, f) : "") +
@@ -374,8 +381,7 @@ function fieldEditor(f, base, pi, parts) {
     optsHTML +
     `<div class="two">${["textarea", "radio", "checks"].includes(f.type) ? "<span></span>" : inputHTML(S("width", "العرض", "select", { opts: [["half", "نص السطر"], ["full", "سطر كامل"]] }), base, f)}
       <div class="fld"><label for="mv-${f.id}">نقله لقسم ثاني</label><select id="mv-${f.id}" data-move="${pi}" data-fid="${f.id}">${parts.map((p, j) => `<option value="${j}"${j === pi ? " selected" : ""}>${esc(p.title || "قسم " + toAr(j + 1))}</option>`).join("")}</select></div></div>` +
-    (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", f.when && f.when.f ? "إلزامي (لما يظهر)" : "إلزامي", "bool"), base, f)) +
-    whenBlock(f, base, { parts });
+    (locked ? `<label class="chk"><input type="checkbox" checked disabled>إلزامي (دايمًا، ما ينشال)</label>` : inputHTML(S("required", f.when && f.when.f ? "إلزامي (لما يظهر)" : "إلزامي", "bool"), base, f));
 }
 function requestPanel(D) {
   const open = OPEN.request;
@@ -387,8 +393,8 @@ function requestPanel(D) {
     const flds = p.fields.map((f, j) => {
       const fk = "fld:" + f.id, lock = WC.LOCKED[f.key];
       const toDash = Array.isArray(f.options) && f.options.some(o => o && o.dash && !o.hidden);
-      const wn = whenNames(D, f);
-      const tags = `<span class="tag">${esc(FTN[f.type] || f.type)}</span>${wn.length ? `<span class="tag">يظهر مع: ${esc(wn.join("، "))}</span>` : f.when && f.when.f ? '<span class="tag">مشروط بدون خيار</span>' : ""}${toDash ? '<span class="tag lock">← لوحة المسوقين</span>' : ""}${lock ? '<span class="tag lock">أساسي</span>' : f.required ? '<span class="tag">إلزامي</span>' : ""}`;
+      const wn = whenNames(D, f), nsub = Array.isArray(f.options) ? f.options.reduce((a, o) => a + ((o && Array.isArray(o.sub)) ? o.sub.length : 0), 0) : 0;
+      const tags = `<span class="tag">${esc(FTN[f.type] || f.type)}</span>${nsub ? `<span class="tag">${toAr(nsub)} تفاصيل</span>` : ""}${wn.length ? `<span class="tag">يظهر مع: ${esc(wn.join("، "))}</span>` : ""}${toDash ? '<span class="tag lock">← لوحة المسوقين</span>' : ""}${lock ? '<span class="tag lock">أساسي</span>' : f.required ? '<span class="tag">إلزامي</span>' : ""}`;
       return `<details class="card${f.hidden ? " off" : ""}" data-k="${fk}" data-fid="${f.id}"${open[fk] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(f.label || "حقل")}</span></span>${tags}${ops("parts." + i + ".fields", j, p.fields.length, f, { noHide: lock, noDel: lock })}</summary>
         <div class="body">${fieldEditor(f, "parts." + i + ".fields." + j, i, D.parts)}</div></details>`;
     }).join("");
@@ -477,7 +483,7 @@ panel.addEventListener("input", (e) => {
   const el = e.target, p = el.dataset.p; if (!p || !CUR) return;
   if (!undoTimer) pushUndo(); clearTimeout(undoTimer); undoTimer = setTimeout(() => undoTimer = null, 900);
   setP(CUR.data, p, el.type === "checkbox" ? el.checked : el.value);
-  if (/\.fields\.\d+\.type$/.test(p)) WC.normField(getP(CUR.data, p.slice(0, -5)));
+  if (/\.(fields|sub)\.\d+\.type$/.test(p)) WC.normField(getP(CUR.data, p.slice(0, -5)));
   if (/\.options\.\d+\.dash$/.test(p)) el.dataset.re = "1";
   if (el.dataset.title) { const t = el.closest(".card")?.querySelector(":scope>summary .tt"); if (t) t.textContent = el.value; }
   changed(!!el.dataset.re);
@@ -517,6 +523,11 @@ panel.addEventListener("click", (e) => {
     const data = T.make(), s = { id: uid(t + "-"), type: t, nav: "", toc: data.title || "", data };
     D.sections.splice(Math.max(0, D.sections.length - 2), 0, s); OPEN.home["sec:" + s.id] = true;
     changed(true); setTimeout(() => panel.querySelector(`[data-k="sec:${s.id}"]`)?.scrollIntoView({ block: "center" }), 50); return;
+  }
+  if (op === "sub-add") {
+    let arr = getP(D, p); if (!Array.isArray(arr)) { setP(D, p, []); arr = getP(D, p); }
+    arr.push({ id: uid("f-"), key: uid("c_"), type: "text", label: "حقل جديد", width: "half" });
+    OPEN[CUR.id][p + "." + (arr.length - 1)] = true; changed(true); return;
   }
   if (op === "part-add") { const pt = { id: uid("p"), title: "قسم جديد", fields: [] }; D.parts.push(pt); OPEN.request["part:" + pt.id] = true; changed(true); return; }
   if (op === "fld-add") { const f = { id: uid("f-"), key: uid("c_"), type: "text", label: "حقل جديد", width: "half" }; D.parts[+b.dataset.pi].fields.push(f); OPEN.request["fld:" + f.id] = true; changed(true); return; }

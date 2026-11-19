@@ -17,7 +17,10 @@ function vis(l){return (l||[]).filter(function(x){return x&&!x.hidden})}
 function opts(s){if(Array.isArray(s))return s.filter(function(o){return o&&!o.hidden&&String(o.t||"").trim()}).map(function(o){return String(o.t).trim()});return String(s||"").split("\n").map(function(x){return x.trim()}).filter(Boolean)}
 function choices(s){return opts(s).filter(function(x){return x.charAt(0)!=="#"})}
 function digits(s){return String(s||"").replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-0x660}).replace(/[۰-۹]/g,function(c){return c.charCodeAt(0)-0x6F0}).replace(/\D/g,"")}
-function fields(){var out=[];vis(R.parts).forEach(function(p){vis(p.fields).forEach(function(f){out.push(f)})});return out}
+/* تفاصيل الخيار: كل خيار ممكن يكون فيه حقول (o.sub) تطلع تحته بس لما العميل يختاره */
+function expand(fs){var out=[];fs.forEach(function(f){out.push(f);if(!WaraqContent.CHOICE[f.type]||!Array.isArray(f.options))return;
+  f.options.forEach(function(o,i){if(!o||o.hidden||!Array.isArray(o.sub))return;vis(o.sub).forEach(function(sf){out.push(Object.assign({},sf,{when:{f:f.id,o:[o.id||("o"+i)]}}))})})});return out}
+function fields(){var out=[];vis(R.parts).forEach(function(p){expand(vis(p.fields)).forEach(function(f){out.push(f)})});return out}
 function locked(f){return LOCKED[f.key]}
 /* حقل مشروط: f.when={f: id حقل الاختيار, o: [ids الخيارات]}. يظهر بس لما العميل يختار وحدة منها. */
 function optList(f){return Array.isArray(f.options)?f.options.map(function(o,i){return o&&{id:o.id||("o"+i),t:String(o.t||"").trim(),hidden:o.hidden}}).filter(function(o){return o&&o.t&&!o.hidden&&o.t.charAt(0)!=="#"}):[]}
@@ -76,7 +79,7 @@ function render(r){
   $("parts").innerHTML=parts.map(function(p){
     var fs=vis(p.fields); if(!fs.length)return "";
     var pi=R.parts.indexOf(p);
-    return '<fieldset class="part" data-part="'+pi+'"><legend><b>'+ar(++n)+'</b><span>'+esc(p.title)+'</span></legend><div class="grid">'+fs.map(function(f){return fieldHTML(f,pi)}).join("")+'</div></fieldset>';
+    return '<fieldset class="part" data-part="'+pi+'"><legend><b>'+ar(++n)+'</b><span>'+esc(p.title)+'</span></legend><div class="grid">'+expand(fs).map(function(f){return fieldHTML(f,pi)}).join("")+'</div></fieldset>';
   }).join("");
   $("go").querySelector(".t").textContent=R.submit||"أرسل الطلب";$("go").dataset.label=R.submit||"أرسل الطلب";
   $("agree").textContent=R.agree||"";

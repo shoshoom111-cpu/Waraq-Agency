@@ -99,7 +99,7 @@ function normField(f){
   if(!CHOICE[f.type]&&Array.isArray(f.options))f.options=f.options.map(function(o){return o.t}).join("\n");
   return f;
 }
-function normRequest(r){(r.parts||[]).forEach(function(p){(p.fields||[]).forEach(normField)});return r}
+function normRequest(r){(r.parts||[]).forEach(function(p){(p.fields||[]).forEach(function(f){normField(f);if(Array.isArray(f.options))f.options.forEach(function(o){if(o&&Array.isArray(o.sub))o.sub.forEach(normField)})})});return r}
 normRequest(REQUEST);
 REQUEST.parts.forEach(function(p){p.fields.forEach(function(f){if(f.key==="picks")f.options.forEach(function(o){if(o.t==="حملة مسوقين")o.dash=true})})});
 
