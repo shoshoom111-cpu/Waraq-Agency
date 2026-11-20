@@ -57,7 +57,8 @@ function fieldHTML(f,pi){
     return h+'<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks" id="'+id+'" role="group" aria-labelledby="'+id+'-l">'+main.map(box).join("")+
       '<button type="button" class="morebtn" data-more="'+esc(f.id)+'" aria-expanded="false" aria-controls="'+id+'-more">'+esc(f.moreText||"+ خدمات أخرى")+'</button></div>'+
       '<div class="morebox" id="'+id+'-more" hidden>'+(extra.length?'<div class="picks">'+extra.map(box).join("")+'</div>':'')+
-      (f.other?'<label class="otherlab" for="'+id+'-other">'+esc(f.otherLabel||"خدمة غير موجودة؟ اكتبها")+'</label><input type="text" id="'+id+'-other" class="other" maxlength="200" placeholder="'+esc(f.otherPh||"اكتب الخدمة اللي تبيها")+'">':'')+'</div></div>';
+      (f.other?'<span class="otherlab" id="'+id+'-ol">'+esc(f.otherLabel||"خدمة غير موجودة؟ اكتبها")+'</span><div class="orows" id="'+id+'-orows" data-of="'+esc(f.id)+'" role="group" aria-labelledby="'+id+'-ol"></div>'+
+        '<button type="button" class="addother" data-addother="'+esc(f.id)+'"><span aria-hidden="true">+</span> خدمة ثانية</button>':'')+'</div></div>';
   }
   if(f.type==="radio"||f.type==="checks"){
     var list=choices(f.options);
@@ -180,12 +181,46 @@ function svcValue(f){
   return out;
 }
 
+/* ---------- «+ خدمات أخرى»: خدمة يكتبها العميل (اسمها ووصفها)، ويقدر يضيف أكثر من وحدة ---------- */
+var MAXOTHER=5;
+function addOther(fid){
+  var box=$("q-"+fid+"-orows"); if(!box||box.children.length>=MAXOTHER)return null;
+  var f=svcField(fid)||{}, rid="q-"+fid+"-o"+(addOther.n=(addOther.n||0)+1), div=document.createElement("div");
+  div.className="orow";
+  div.innerHTML='<div class="orow-top"><label class="sr-only" for="'+rid+'-n">اسم الخدمة</label><input type="text" id="'+rid+'-n" class="o-name" maxlength="120" placeholder="'+esc(f.otherPh||"اسم الخدمة")+'">'+
+    '<button type="button" class="srow-x" data-odel aria-label="حذف هذي الخدمة"><span aria-hidden="true">×</span></button></div>'+
+    '<label class="sr-only" for="'+rid+'-d">وصف الخدمة</label><textarea id="'+rid+'-d" class="o-desc" rows="3" maxlength="1500" placeholder="وش تبي بالضبط في هذي الخدمة؟"></textarea>';
+  box.appendChild(div); syncOther(fid); return div;
+}
+function syncOther(fid){
+  var box=$("q-"+fid+"-orows"); if(!box)return;
+  var rows=box.querySelectorAll(".orow");
+  each(rows,function(r){r.querySelector("[data-odel]").hidden=rows.length<2&&!r.querySelector(".o-name").value&&!r.querySelector(".o-desc").value});
+  var add=document.querySelector('[data-addother="'+fid+'"]');
+  if(add)add.disabled=rows.length>=MAXOTHER||Array.prototype.some.call(rows,function(r){return !r.querySelector(".o-name").value.trim()});
+}
+function otherRows(f){
+  var out=[]; out.bad=null;
+  each(document.querySelectorAll("#q-"+f.id+"-orows .orow"),function(r){
+    var n=r.querySelector(".o-name").value.trim(), d=r.querySelector(".o-desc").value.trim();
+    if(n)out.push({id:"custom",s:n.slice(0,120),d:d.slice(0,1500)}); else if(d&&!out.bad)out.bad=r.querySelector(".o-name");
+  });
+  return out;
+}
+document.addEventListener("click",function(e){
+  var a=e.target.closest&&e.target.closest("[data-addother]");
+  if(a){var r=addOther(a.dataset.addother);if(r)r.querySelector(".o-name").focus();return}
+  var x=e.target.closest&&e.target.closest("[data-odel]");
+  if(x){var box=x.closest(".orows"),fid=box.dataset.of;x.closest(".orow").remove();if(!box.children.length)addOther(fid);else syncOther(fid);var i=box.querySelector(".o-name");if(i)i.focus()}
+});
+document.addEventListener("input",function(e){var b=e.target.closest&&e.target.closest(".orows");if(b)syncOther(b.dataset.of)});
+
 /* ---------- «+ خدمات أخرى» ---------- */
 function openMore(btn,open){var b=$(btn.getAttribute("aria-controls"));if(!b)return;b.hidden=!open;btn.setAttribute("aria-expanded",open)}
 document.addEventListener("click",function(e){
   var m=e.target.closest&&e.target.closest("[data-more]"); if(!m)return;
   var open=m.getAttribute("aria-expanded")!=="true"; openMore(m,open);
-  if(open){var first=$(m.getAttribute("aria-controls")).querySelector("input");if(first)first.focus()}
+  if(open){var mb=$(m.getAttribute("aria-controls")),ob=mb.querySelector(".orows");if(ob&&!ob.children.length)addOther(ob.dataset.of);var first=mb.querySelector("input");if(first)first.focus()}
 });
 
 /* ---------- read answers ---------- */
@@ -194,8 +229,7 @@ function valueOf(f){
   if(f.type==="radio"){var c=document.querySelector('input[name="q-'+f.id+'"]:checked');return c?c.value:""}
   if(f.type==="checks"){
     var got=Array.prototype.filter.call(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){return c.checked}).map(function(c){return c.value});
-    var ot=$("q-"+f.id+"-other"), ov=ot?ot.value.trim():"";
-    if(ov&&got.indexOf(ov)<0)got.push(ov.slice(0,200));
+    otherRows(f).forEach(function(o){if(got.indexOf(o.s)<0)got.push(o.s)});
     return got;
   }
   var el=$("q-"+f.id);return el?el.value.trim():"";
@@ -278,6 +312,11 @@ $("form").addEventListener("submit",function(e){
       if(sv.length){data.services=(data.services||[]).concat(sv).slice(0,10);lines.push(lbl+":");sv.forEach(function(x){lines.push("- "+x.s+(x.d?": "+x.d:""))})}
       return false;
     }
+    if(f.type==="checks"&&f.other){
+      var ors=otherRows(f);
+      if(ors.bad){bad=[f,"اكتب اسم الخدمة اللي وصفتها، أو امسح الوصف."];return true}
+      if(ors.length){data.services=(data.services||[]).concat(ors).slice(0,10)}
+    }
     var v=valueOf(f), empty=Array.isArray(v)?!v.length:!v, req=f.required||locked(f);
     var shownLabel=f.key==="name"&&$("name-l")?$("name-l").textContent.replace(/\s*\(.*$/,"").trim():f.label;
     if(req&&empty){bad=[f,f.type==="checks"||f.type==="radio"?"اختر من «"+f.label+"».":"اكتب "+shownLabel+"."];return true}
@@ -287,6 +326,7 @@ $("form").addEventListener("submit",function(e){
     if(empty)return false;
     var shown=Array.isArray(v)?v.join("، "):v;
     lines.push(lbl+": "+(f.type==="tel"?valueOf(f):shown));
+    if(f.type==="checks"&&f.other)otherRows(f).forEach(function(o){if(o.d)lines.push("- "+o.s+": "+o.d)});
     if(CORE[f.key]&&!data.hasOwnProperty(f.key))data[f.key]=f.key==="picks"?(Array.isArray(v)?v:[v]):(Array.isArray(v)?v.join("، "):String(v)).slice(0,2000);
     else answers.push({l:String(lbl).slice(0,120),v:String(shown).slice(0,2000)});
     return false;
@@ -303,7 +343,7 @@ $("form").addEventListener("submit",function(e){
       var denied=err&&err.code==="permission-denied";
       show(false,data,"",lines,denied?"ما قدرنا نحفظ الطلب لأن فيه بيانات غير مقبولة (مثلًا نص طويل جدًا). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.":"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
-$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});initRows();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
+$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows,.orows"),function(b){b.innerHTML=""});each(document.querySelectorAll(".morebox"),function(b){b.hidden=true});each(document.querySelectorAll("[data-more]"),function(b){b.setAttribute("aria-expanded","false")});initRows();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
   var ta=$("text");
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}

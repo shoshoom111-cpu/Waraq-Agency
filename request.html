@@ -142,8 +142,18 @@ body.loading .intro,body.loading .layout{visibility:hidden}
 .morebox{margin-top:12px;padding:12px;border:1.5px solid var(--rule);background:var(--paper);display:grid;gap:10px}
 .morebox .picks label{background:var(--sheet)}
 .otherlab{font-family:var(--display);font-weight:700;font-size:.88rem}
-.morebox input.other{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--sheet);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px}
-.morebox input.other:focus{outline:0;border-color:var(--ink)}
+.orows{display:grid;gap:10px}
+.orow{border:1.5px solid var(--rule);background:var(--sheet);padding:10px;display:grid;gap:8px}
+.orow:focus-within{border-color:var(--ink)}
+.orow-top{display:flex;gap:8px;align-items:center}
+.orow .o-name,.orow .o-desc{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px}
+.orow .o-name{flex:1;font-family:var(--display);font-weight:700}
+.orow .o-name:focus,.orow .o-desc:focus{outline:0;border-color:var(--ink);background:var(--sheet)}
+.orow .o-desc{min-height:76px;resize:vertical}
+.addother{justify-self:start;display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:.9rem;border:1.5px dashed var(--ink);background:transparent;color:var(--ink);padding:7px 16px;cursor:pointer}
+.addother span{font-size:1.15rem;line-height:1}
+.addother:hover:not(:disabled){background:var(--mark);border-style:solid}
+.addother:disabled{opacity:.45;cursor:not-allowed}
 @media (prefers-reduced-motion:no-preference){.morebox:not([hidden]){animation:condIn .3s var(--ease) both}}
 /* «+ أضف خدمة» */
 .sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -218,8 +228,8 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   </div>
 </div>
 <noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
-<script src="config.js?v=20261120"></script>
-<script src="js/content.js?v=20261120"></script>
-<script src="js/request.js?v=20261120"></script>
+<script src="config.js?v=20261120b"></script>
+<script src="js/content.js?v=20261120b"></script>
+<script src="js/request.js?v=20261120b"></script>
 </body>
 </html>
