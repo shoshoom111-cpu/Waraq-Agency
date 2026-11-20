@@ -91,19 +91,29 @@ const RQ = { requests: [], joinRequests: [] }, RQL = { requests: false, joinRequ
 const eff = (d) => d.agencyOk && d.state === "new" ? "approved" : d.state;
 let EXEC = {};
 const EXEC_DOC = () => F.doc(db, "siteSettings", "executors");
-async function loadExec() { try { const s = await F.getDoc(EXEC_DOC()); EXEC = s.exists() ? (s.data().map || {}) : {}; } catch { EXEC = {}; } }
-function dashNames() {
-  const D = ED.request && ED.request.data, out = new Set(); if (!D) return out;
-  reqFields(D).forEach(f => { if (Array.isArray(f.options)) f.options.forEach(o => { if (o && o.dash && o.t) out.add(String(o.t).trim()); }); });
-  return out;
+async function loadExec(strict) { try { const s = await F.getDoc(EXEC_DOC()); EXEC = s.exists() ? (s.data().map || {}) : {}; } catch (err) { if (strict) throw err; EXEC = {}; } }
+/* نموذج الطلب المنشور (مو المسودة): منه نعرف الخدمات ومنفذيها */
+let PUBD = null;
+const pubReq = () => { try { return prep("request", ED.request.pub || JSON.stringify(WC.defaults("request"))); } catch { return null; } };
+/* الخدمة: الاسم الحالي، ومرجعها الثابت (رقم الحقل/رقم الخيار) عشان تغيير الاسم ما يقطع توجيهها */
+function svcOption(D, kind, val) {
+  for (const f of reqFields(D)) {
+    if (!Array.isArray(f.options)) continue;
+    if (kind === "id" && f.type !== "svclist") continue;
+    if (kind === "name" && f.key !== "picks" && f.type !== "svclist") continue;
+    const o = f.options.find(o => o && (kind === "id" ? o.id === val : String(o.t || "").trim() === val));
+    if (o) return { name: String(o.t).trim(), ref: f.id + "/" + o.id, dash: !!o.dash };
+  }
+  return null;
 }
 /* كل خدمة في الطلب ومين ينفذها */
-function routesOf(d) {
-  const dn = dashNames(), seen = new Set(), out = [];
-  const add = (name, det) => { name = String(name || "").trim(); if (!name || seen.has(name)) return; seen.add(name);
-    const e = EXEC[name] || {}, kind = dn.has(name) ? "dash" : (e.kind || "me");
+function routesOf(d, D) {
+  D = D || PUBD; const seen = new Set(), out = [];
+  const add = (name, det, hit) => { name = String((hit && hit.name) || name || "").trim(); if (!name || seen.has(name)) return; seen.add(name);
+    const e = (hit && EXEC[hit.ref]) || EXEC[name] || {}, kind = hit && hit.dash ? "dash" : (e.kind || "me");
     out.push({ name, det: det || "", kind, to: e.to || "", who: e.name || "" }); };
-  (d.services || []).forEach(x => add(x.s, x.d)); (d.picks || []).forEach(p => add(p, ""));
+  (d.services || []).forEach(x => add(x.s, x.d, D && (svcOption(D, "id", x.id) || svcOption(D, "name", String(x.s || "").trim()))));
+  (d.picks || []).forEach(p => add(p, "", D && svcOption(D, "name", String(p || "").trim())));
   return out;
 }
 function execMsg(d, items) {
@@ -132,8 +142,12 @@ function routesHTML(d) {
   }).join("") + `</div>`;
 }
 async function approve(d) {
-  await Promise.all([loadExec(), loadContent("request").catch(() => {})]);
-  const rs = routesOf(d), toDash = rs.some(r => r.kind === "dash"), byMail = {};
+  let D;
+  try {
+    const [s] = await Promise.all([F.getDoc(F.doc(db, "siteContent", "request")), loadExec(true)]);
+    D = prep("request", s.exists() && s.data().json ? s.data().json : JSON.stringify(WC.defaults("request"))); PUBD = D;
+  } catch (err) { toast("ما قدرت أحمّل إعدادات الخدمات، فما قبلت الطلب. تأكدي من الاتصال وجرّبي مرة ثانية."); return; }
+  const rs = routesOf(d, D), toDash = rs.some(r => r.kind === "dash"), byMail = {};
   rs.filter(r => r.kind === "email" && r.to).forEach(r => (byMail[r.to] = byMail[r.to] || []).push(r));
   await F.updateDoc(F.doc(db, "requests", d.id), toDash ? { dash: true, agencyOk: true, handledAt: F.serverTimestamp() } : { state: "approved", handledAt: F.serverTimestamp() });
   const res = await Promise.all(Object.entries(byMail).map(([to, items]) => sendExecEmail(to, d, items)));
@@ -146,13 +160,13 @@ async function approve(d) {
 }
 let col = "requests", filter = "all", query = "", openId = null;
 function startRequests() {
-  loadExec(); loadContent("request").then(() => { if (VIEW === "requests") renderReq(); }).catch(() => {});
+  loadExec(); loadContent("request").then(() => { PUBD = pubReq(); if (VIEW === "requests") renderReq(); }).catch(() => {});
   Object.keys(RQ).forEach(c => {
     const q = F.query(F.collection(db, c), F.orderBy("createdAt", "desc"), F.limit(1000));
     unsubs.push(F.onSnapshot(q, (snap) => {
       RQ[c] = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })); RQL[c] = true;
       document.querySelector(`[data-count="${c}"]`).textContent = toAr(RQ[c].filter(x => eff(x) === "new").length);
-      const n = RQ.requests.filter(x => eff(x) === "new").length + RQ.joinRequests.filter(x => x.state === "new").length;
+      const n = RQ.requests.filter(x => eff(x) === "new" || (x.agencyOk && x.state === "new")).length + RQ.joinRequests.filter(x => x.state === "new").length;
       $("nav-new").hidden = !n; $("nav-new").textContent = toAr(n);
       if (c === col) renderReq();
     }, (err) => {
@@ -169,7 +183,9 @@ document.querySelector(".tabs").addEventListener("keydown", (e) => {
 function selectTab(b) { document.querySelectorAll(".tabs button").forEach(x => { const on = x === b; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; }); col = b.dataset.col; filter = "all"; openId = null; renderReq(); }
 $("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderReq(); });
 $("chips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = b.dataset.f; openId = null; renderReq(); });
+const waiting = (d) => !!(d.agencyOk && d.state === "new");
 function matches(d) {
+  if (filter === "waiting") { if (!waiting(d)) return false; return !query || JSON.stringify(Object.values(d)).toLowerCase().includes(query); }
   if (filter !== "all" && eff(d) !== filter) return false;
   if (!query) return true;
   return JSON.stringify(Object.values(d)).toLowerCase().includes(query);
@@ -211,7 +227,8 @@ function reqEmpty(h, p) { $("loading").hidden = true; $("list").innerHTML = ""; 
 function renderReq() {
   const all = RQ[col];
   const chip = (key, label, n) => `<button type="button" data-f="${key}" aria-pressed="${filter === key}">${label} <span class="num">${toAr(n)}</span></button>`;
-  $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => (col === "requests" ? eff(d) : d.state) === k).length)).join("");
+  $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => (col === "requests" ? eff(d) : d.state) === k).length)).join("") +
+    (col === "requests" && all.some(waiting) ? chip("waiting", "بانتظار لوحة المسوقين", all.filter(waiting).length) : "");
   if (!RQL[col]) { $("loading").hidden = false; $("list").innerHTML = ""; $("empty").hidden = true; return; }
   $("loading").hidden = true;
   const items = all.filter(matches);
@@ -522,13 +539,13 @@ function changed(rerender) {
 }
 function sendPreview(focus) {
   if (!CUR || !frame.contentWindow) return;
-  frame.contentWindow.postMessage({ type: "waraq-content", id: CUR.id, content: CUR.data, home: ED.home.data, request: ED.request.data, focus }, "*");
+  frame.contentWindow.postMessage({ type: "waraq-content", id: CUR.id, content: CUR.data, home: ED.home.data, request: ED.request.data, focus }, location.origin);
 }
 function focusPreview(details) {
   if (!frame.contentWindow) return;
-  if (CUR.id === "home") { const s = details.dataset.sec ?? (details.dataset.k === "brand" ? "brand" : null); if (s != null) frame.contentWindow.postMessage({ type: "waraq-focus", sec: s }, "*"); }
+  if (CUR.id === "home") { const s = details.dataset.sec ?? (details.dataset.k === "brand" ? "brand" : null); if (s != null) frame.contentWindow.postMessage({ type: "waraq-focus", sec: s }, location.origin); }
   else { const sel = details.dataset.fid ? { field: details.dataset.fid } : details.dataset.part != null ? { part: +details.dataset.part } : details.dataset.k === "texts" ? { box: "intro" } : null;
-    if (sel) frame.contentWindow.postMessage({ type: "waraq-focus", sel }, "*"); }
+    if (sel) frame.contentWindow.postMessage({ type: "waraq-focus", sel }, location.origin); }
 }
 window.addEventListener("message", (e) => {
   const m = e.data || {};
@@ -578,7 +595,7 @@ panel.addEventListener("change", (e) => {
   }
   if (el.dataset.move != null) {   // move field to another part
     pushUndo(); const from = +el.dataset.move, to = +el.value, P = CUR.data.parts;
-    const k = P[from].fields.findIndex(f => f.id === el.dataset.fid); const [f] = P[from].fields.splice(k, 1); P[to].fields.push(f);
+    const k = P[from].fields.findIndex(f => f.id === el.dataset.fid); const [f] = P[from].fields.splice(k, 1); P[to].fields.push(f); if (P[to].hidden && WC.LOCKED[f.key]) P[to].hidden = false;
     OPEN.request["part:" + P[to].id] = true; OPEN.request["fld:" + f.id] = true; changed(true); toast("انتقل الحقل لقسم «" + (P[to].title || "") + "».");
   }
   if (el.dataset.core != null && el.value) {   // bring back a core field
@@ -704,17 +721,18 @@ function openModal(h) {
   $("modal-restore").hidden = h.json === ED[h.kind].pub;
   $("modal").hidden = false; $("modal-frame").src = (h.kind === "home" ? "index.html" : "request.html") + "?preview=1&v=" + h.id;
 }
-function sendModal() { if (MODAL) $("modal-frame").contentWindow.postMessage({ type: "waraq-content", id: MODAL.kind, content: JSON.parse(MODAL.json), home: ED.home.data, request: ED.request.data }, "*"); }
+function sendModal() { if (MODAL) $("modal-frame").contentWindow.postMessage({ type: "waraq-content", id: MODAL.kind, content: JSON.parse(MODAL.json), home: ED.home.data, request: ED.request.data }, location.origin); }
 function closeModal() { $("modal").hidden = true; $("modal-frame").src = "about:blank"; MODAL = null; }
 $("modal-close").addEventListener("click", closeModal);
 $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
 
 /* =============== settings =============== */
 function serviceList() {
-  const D = ED.request.data, out = []; if (!D) return out;
+  const D = pubReq(), out = []; if (!D) return out;
   reqFields(D).forEach(f => { if (!(f.key === "picks" || f.type === "svclist") || !Array.isArray(f.options)) return;
     f.options.forEach(o => { const t = String((o && o.t) || "").trim(); if (!t || t.startsWith("#")) return;
-      const x = out.find(y => y.t === t); if (x) { x.dash = x.dash || !!o.dash; return; } out.push({ t, dash: !!o.dash, hidden: !!o.hidden }); }); });
+      const ref = f.id + "/" + o.id, x = out.find(y => y.t === t);
+      if (x) { x.dash = x.dash || !!o.dash; x.refs.push(ref); return; } out.push({ t, dash: !!o.dash, hidden: !!o.hidden, refs: [ref] }); }); });
   return out;
 }
 const EXK = [["me", "أنا (بدون إرسال)"], ["email", "إيميل"], ["wa", "واتساب"]];
@@ -724,9 +742,9 @@ async function renderExec() {
   const list = serviceList();
   if (!list.length) { box.innerHTML = '<p class="hint">ما فيه خدمات بعد. أضيفيها من «تعديل صفحة الطلبات».</p>'; return; }
   box.innerHTML = list.map(s => {
-    const e = EXEC[s.t] || {}, k = e.kind || "me", nm = esc(s.t) + (s.hidden ? " <small>(مخفية)</small>" : "");
+    const e = s.refs.map(r => EXEC[r]).find(Boolean) || EXEC[s.t] || {}, k = e.kind || "me", nm = esc(s.t) + (s.hidden ? " <small>(مخفية)</small>" : "");
     if (s.dash) return `<div class="exrow"><b>${nm}</b><span class="fixed">← لوحة المسوقين (تنتقل لها لما تقبلين الطلب)</span></div>`;
-    return `<div class="exrow" data-ex="${esc(s.t)}"><b>${nm}</b>
+    return `<div class="exrow" data-ex="${esc(s.t)}" data-refs="${esc(s.refs.join(" "))}"><b>${nm}</b>
       <select data-exk aria-label="منفذ ${esc(s.t)}">${EXK.map(([v, l]) => `<option value="${v}"${k === v ? " selected" : ""}>${l}</option>`).join("")}</select>
       <input data-exn aria-label="اسم المنفذ" placeholder="اسم المنفذ (مثل: المصمم)" value="${esc(e.name || "")}"${k === "me" ? " hidden" : ""}>
       <input data-ext aria-label="إيميل أو رقم المنفذ" dir="ltr" placeholder="${k === "wa" ? "9665XXXXXXXX" : "name@example.com"}" value="${esc(e.to || "")}"${k === "me" ? " hidden" : ""}></div>`;
@@ -744,7 +762,8 @@ $("exec-save").addEventListener("click", async () => {
     const k = row.querySelector("[data-exk]").value, to = row.querySelector("[data-ext]").value.trim(), nm = row.querySelector("[data-exn]").value.trim();
     if (k === "email" && !okEmail(to)) bad = bad || row.dataset.ex + ": الإيميل غير صحيح";
     if (k === "wa" && waNum(to).length < 10) bad = bad || row.dataset.ex + ": اكتبي الرقم مثل 9665XXXXXXXX";
-    map[row.dataset.ex] = k === "me" ? { kind: "me" } : { kind: k, to: k === "wa" ? waNum(to) : to, name: nm.slice(0, 80) };
+    const ent = k === "me" ? { kind: "me" } : { kind: k, to: k === "wa" ? waNum(to) : to, name: nm.slice(0, 80) };
+    map[row.dataset.ex] = ent; (row.dataset.refs || "").split(" ").filter(Boolean).forEach(r => { map[r] = ent; });
   });
   if (bad) { m.className = "saved err"; m.textContent = bad + "."; return; }
   $("exec-save").disabled = true; m.textContent = "";

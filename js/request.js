@@ -20,7 +20,7 @@ function digits(s){return String(s||"").replace(/[٠-٩]/g,function(c){return c.
 /* تفاصيل الخيار: كل خيار ممكن يكون فيه حقول (o.sub) تطلع تحته بس لما العميل يختاره */
 function expand(fs){var out=[];fs.forEach(function(f){out.push(f);if(!WaraqContent.CHOICE[f.type]||!Array.isArray(f.options))return;
   f.options.forEach(function(o,i){if(!o||o.hidden||!Array.isArray(o.sub))return;vis(o.sub).forEach(function(sf){out.push(Object.assign({},sf,{when:{f:f.id,o:[o.id||("o"+i)]}}))})})});return out}
-function fields(){var out=[];vis(R.parts).forEach(function(p){expand(vis(p.fields)).forEach(function(f){out.push(f)})});return out}
+function fields(){var out=[];(R.parts||[]).filter(function(p){return p&&(!p.hidden||(p.fields||[]).some(function(f){return locked(f)}))}).forEach(function(p){expand(vis(p.fields)).forEach(function(f){out.push(f)})});return out}
 function locked(f){return LOCKED[f.key]}
 /* حقل مشروط: f.when={f: id حقل الاختيار, o: [ids الخيارات]}. يظهر بس لما العميل يختار وحدة منها. */
 function optList(f){return Array.isArray(f.options)?f.options.map(function(o,i){return o&&{id:o.id||("o"+i),t:String(o.t||"").trim(),hidden:o.hidden,more:!!o.more}}).filter(function(o){return o&&o.t&&!o.hidden&&o.t.charAt(0)!=="#"}):[]}
@@ -74,11 +74,11 @@ function fieldHTML(f,pi){
   }else if(f.type==="textarea"){
     h+='<label for="'+id+'">'+lab+'</label><textarea id="'+id+'" maxlength="2000" placeholder="'+esc(f.placeholder||"")+'"></textarea>';
   }else{
-    var t=f.type==="tel"?"tel":f.type==="email"?"email":f.type==="url"?"url":f.type==="number"?"number":f.type==="date"?"date":"text";
+    var t=f.type==="tel"?"tel":f.type==="email"?"email":f.type==="url"?"text":f.type==="number"?"number":f.type==="date"?"date":"text";
     var dl=t==="text"&&choices(f.options).length?"dl-"+f.id:"";
     h+='<label for="'+id+'"'+(f.key==="name"?' id="name-l"':'')+'>'+lab+'</label><input type="'+t+'" id="'+id+'"'+
-      (t==="tel"||t==="email"||t==="url"?' dir="ltr"':'')+(t==="number"?' inputmode="numeric" min="0"':'')+(t==="tel"?' inputmode="tel" autocomplete="tel"':'')+(t==="email"?' autocomplete="email"':'')+(f.key==="name"?' autocomplete="name"':'')+
-      ' maxlength="'+(t==="tel"?20:t==="url"?300:200)+'" placeholder="'+esc(f.placeholder||"")+'"'+(dl?' list="'+dl+'"':'')+'>'+
+      (t==="tel"||t==="email"||f.type==="url"?' dir="ltr"':'')+(f.type==="url"?' inputmode="url" autocomplete="url"':'')+(t==="number"?' inputmode="numeric" min="0"':'')+(t==="tel"?' inputmode="tel" autocomplete="tel"':'')+(t==="email"?' autocomplete="email"':'')+(f.key==="name"?' autocomplete="name"':'')+
+      ' maxlength="'+(t==="tel"?20:t==="url"?300:t==="email"?120:200)+'" placeholder="'+esc(f.placeholder||"")+'"'+(dl?' list="'+dl+'"':'')+'>'+
       (dl?'<datalist id="'+dl+'">'+choices(f.options).map(function(o){return '<option value="'+esc(o)+'">'}).join("")+'</datalist>':'');
   }
   return h+'</div>';
@@ -86,7 +86,7 @@ function fieldHTML(f,pi){
 function render(r){
   R=r;
   WA=String(BRAND.whatsapp||CFG.whatsapp||"").replace(/\D/g,""); hasWA=/^\d{8,15}$/.test(WA);
-  var parts=vis(R.parts), n=0;
+  var parts=(R.parts||[]).filter(function(p){return p&&(!p.hidden||(p.fields||[]).some(function(f){return locked(f)}))}), n=0;
   $("intro").innerHTML='<h1>'+esc(R.title)+(R.highlight?' <span class="hl">'+esc(R.highlight)+'</span>':'')+'</h1>'+(R.intro?'<p>'+esc(R.intro)+'</p>':'');
   $("parts").innerHTML=parts.map(function(p){
     var fs=vis(p.fields); if(!fs.length)return "";
@@ -200,13 +200,23 @@ function valueOf(f){
   }
   var el=$("q-"+f.id);return el?el.value.trim():"";
 }
+function normLink(v){
+  v=String(v||"").trim(); if(!v)return "";
+  if(/^@[\w.\-]{2,}$/.test(v))return v;
+  if(!/^https?:\/\//i.test(v))v="https://"+v.replace(/^\/+/,"");
+  return /^https?:\/\/[^\s\/]+\.[^\s]+/i.test(v)?v.slice(0,300):"";
+}
+function clearErrs(){each(document.querySelectorAll(".ferr"),function(x){x.remove()});each(document.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});$("err").textContent=""}
 function fail(f,msg){
   $("err").textContent=msg;
+  var fb=document.querySelector('[data-field="'+f.id+'"]');
+  if(fb){var fe=document.createElement("p");fe.className="ferr";fe.id="ferr-"+f.id;fe.setAttribute("role","alert");fe.textContent=msg;fb.appendChild(fe)}
   var box=document.querySelector('[data-field="'+f.id+'"]'), el=f.type==="svclist"?(box.querySelector(".srow select")||box):$("q-"+f.id)||box.querySelector("input");
   (el.closest(".picks")||el).setAttribute("aria-invalid","true");
+  if(el.setAttribute)el.setAttribute("aria-describedby","ferr-"+f.id);
   el.focus(); box.scrollIntoView({block:"center",behavior:"smooth"});
 }
-document.addEventListener("input",function(e){var t=e.target;if(t.removeAttribute){t.removeAttribute("aria-invalid");var g=t.closest&&t.closest(".picks");if(g)g.removeAttribute("aria-invalid")}});
+document.addEventListener("input",function(e){var t=e.target;if(t.removeAttribute){t.removeAttribute("aria-invalid");var g=t.closest&&t.closest(".picks");if(g)g.removeAttribute("aria-invalid");var fb=t.closest&&t.closest("[data-field]"),fe=fb&&fb.querySelector(".ferr");if(fe)fe.remove()}});
 document.addEventListener("change",function(e){var g=e.target.closest&&e.target.closest(".picks");if(g)g.removeAttribute("aria-invalid")});
 
 /* ---------- Firestore ---------- */
@@ -223,24 +233,26 @@ if(hasDB&&!PREVIEW)document.addEventListener("focusin",function f(){document.rem
 function waSend(d,subject,ls){
   var ph=String(d.waPhone||"").replace(/\D/g,""), key=String(d.waKey||"").trim(); if(ph.length<10||!key)return;
   var text=(subject+"\n\n"+ls.filter(function(l,i){return i>1||l}).join("\n")).slice(0,1500);
-  try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors"}).catch(function(){})}catch(e){}
+  try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}
 }
 function notify(x,subject,lines){
   return x.fs.getDoc(x.fs.doc(x.db,"siteSettings","notify")).then(function(s){
     var d=s.exists()?s.data():{}, em=String(d.email||"").trim();
     waSend(d,subject,lines);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return;
-    return fetch("https://formsubmit.co/ajax/"+em,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},
+    return fetch("https://formsubmit.co/ajax/"+em,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Accept":"application/json"},
       body:JSON.stringify({_subject:subject,_template:"box",_captcha:"false",message:lines.join("\n")+"\n\nتفاصيل الطلب في صفحة طلبات الوكالة ولوحة المسوقين."})});
   }).catch(function(e){if(window.console)console.warn("notify:",e)});
 }
-function save(data,lines){
-  var work=db().then(function(x){
+function save(data,lines,onLate){
+  return db().then(function(x){
     Object.keys(data).forEach(function(k){if(data[k]===""||(Array.isArray(data[k])&&!data[k].length))delete data[k]});
     data.state="new";data.createdAt=x.fs.serverTimestamp();data.source=(location.hostname||"local").slice(0,100);
-    return x.fs.addDoc(x.fs.collection(x.db,"requests"),data).then(function(ref){notify(x,"طلب خدمة جديد"+(data.book?": «"+data.book+"»":"")+" من "+data.name,lines);return ref});
+    var work=x.fs.addDoc(x.fs.collection(x.db,"requests"),data).then(function(ref){notify(x,"طلب خدمة جديد"+(data.book?": «"+data.book+"»":"")+" من "+data.name,lines);return ref});
+    var late=false;
+    work.then(function(ref){if(late&&onLate)onLate(ref)},function(){});
+    return Promise.race([work,new Promise(function(_,rej){setTimeout(function(){late=true;rej(new Error("timeout"))},20000)})]);
   });
-  return Promise.race([work,new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},15000)})]);
 }
 
 /* ---------- submit ---------- */
@@ -253,8 +265,8 @@ function show(okMode,d,ref,lines,warn){
 }
 $("form").addEventListener("submit",function(e){
   e.preventDefault(); if(PREVIEW)return;
-  $("err").textContent="";each(document.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});
-  if($("web").value)return;
+  clearErrs();
+  if($("web").value){show(true,{},"------",[]);return}
   var data={}, answers=[], lines=["طلب خدمة من موقع وكالة "+BRAND.name,""], bad=null;
   fields().some(function(f){
     var by=shownBy(f); if(by===false)return false;
@@ -271,7 +283,7 @@ $("form").addEventListener("submit",function(e){
     if(req&&empty){bad=[f,f.type==="checks"||f.type==="radio"?"اختر من «"+f.label+"».":"اكتب "+shownLabel+"."];return true}
     if(!empty&&f.type==="tel"){var dg=digits(v);if(dg.length<9||dg.length>15){bad=[f,"اكتب رقم جوال صحيح، مثل 05xxxxxxxx."];return true}v=dg}
     if(!empty&&f.type==="email"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){bad=[f,"البريد غير صحيح. صحّحه أو اتركه فارغًا."];return true}
-    if(!empty&&f.type==="url"&&!/^https?:\/\/\S+\.\S+/.test(v)){bad=[f,"الرابط لازم يبدأ بـ https:// أو اتركه فارغًا."];return true}
+    if(!empty&&f.type==="url"){v=normLink(v);if(!v){bad=[f,"اكتب رابط صحيح (مثل instagram.com/حسابك) أو اسم حسابك مثل ‎@حسابك."];return true}}
     if(empty)return false;
     var shown=Array.isArray(v)?v.join("، "):v;
     lines.push(lbl+": "+(f.type==="tel"?valueOf(f):shown));
@@ -285,8 +297,11 @@ $("form").addEventListener("submit",function(e){
   data.dash=false;
   if(!hasDB){show(false,data,"",lines);return}
   busy(true);
-  save(data,lines).then(function(ref){busy(false);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)},
-    function(err){busy(false);if(window.console)console.warn("Firestore:",err);show(false,data,"",lines,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
+  var okd=function(ref){busy(false);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)};
+  save(data,lines,okd).then(okd,
+    function(err){busy(false);if(window.console)console.warn("Firestore:",err);
+      var denied=err&&err.code==="permission-denied";
+      show(false,data,"",lines,denied?"ما قدرنا نحفظ الطلب لأن فيه بيانات غير مقبولة (مثلًا نص طويل جدًا). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.":"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
 $("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});initRows();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
@@ -294,6 +309,19 @@ $("copy").addEventListener("click",function(){
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}
   try{navigator.clipboard.writeText(ta.value).then(function(){$("copied").textContent="تم النسخ."},man)}catch(e){man()}
 });
+
+/* اسم الوكالة في رأس الصفحة والعنوان، والواتساب، بدون إعادة رسم النموذج */
+function applyBrand(){
+  var b=document.querySelector(".mast .brand");
+  if(b&&BRAND.name){b.querySelector("b").textContent=BRAND.name;var sp=b.querySelector("span");if(sp)sp.textContent=BRAND.tagline||""}
+  if(BRAND.name)document.title=(R&&R.title?R.title+(R.highlight?" "+R.highlight:"")+" · ":"")+BRAND.name;
+  WA=String(BRAND.whatsapp||CFG.whatsapp||"").replace(/\D/g,""); hasWA=/^\d{8,15}$/.test(WA); $("wa").hidden=!hasWA;
+}
+/* لو المحتوى المحفوظ في الجهاز خربان: نمسحه ونعرض النسخة الأصلية بدل ما تعلق الصفحة */
+function safeRender(r){
+  try{render(r);applyBrand()}
+  catch(e){if(window.console)console.warn("render:",e);try{localStorage.removeItem("waraq-content-request")}catch(x){}render(WaraqContent.defaults("request"));applyBrand()}
+}
 
 /* ---------- preview mode ---------- */
 function mark(sel,scroll){
@@ -306,8 +334,9 @@ if(PREVIEW){
   document.documentElement.classList.add("preview");
   var host=window.parent!==window?window.parent:window.opener;
   window.addEventListener("message",function(e){
+    if(e.origin!==location.origin)return;
     var m=e.data||{};
-    if(m.type==="waraq-content"&&m.id==="request"){if(m.home&&m.home.brand)BRAND=m.home.brand;render(m.content);mark(m.focus)}
+    if(m.type==="waraq-content"&&m.id==="request"){if(m.home&&m.home.brand)BRAND=m.home.brand;render(m.content);applyBrand();mark(m.focus)}
     if(m.type==="waraq-focus")mark(m.sel,true);
   });
   document.addEventListener("click",function(e){
@@ -318,10 +347,13 @@ if(PREVIEW){
   },true);
   if(host)host.postMessage({type:"waraq-ready",id:"request"},"*");
 }else{
-  WaraqContent.load("home",function(h){if(h&&h.brand){BRAND=h.brand;if(R)render(R)}});
+  var dirty=false;
+  $("form").addEventListener("input",function(){dirty=true});
+  $("form").addEventListener("change",function(){dirty=true});
+  WaraqContent.load("home",function(h){if(h&&h.brand){BRAND=h.brand;applyBrand()}});
   WaraqContent.load("request",function(r,net){
-    if(R&&net){var a=document.activeElement;if(a&&a.closest&&a.closest("form")&&a!==document.body)return}
-    render(r);
+    if(R&&net&&dirty)return;   // ما نعيد رسم النموذج والعميل يعبّيه
+    safeRender(r);
   });
 }
 })();

@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>اطلب خدمة · وكالة ورق</title>
+<title>اطلب خدمة · رحلة ورق</title>
+<link rel="canonical" href="https://waraq-agency.com/request.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="اطلب خدمة · رحلة ورق">
+<meta property="og:url" content="https://waraq-agency.com/request.html">
+<meta property="og:locale" content="ar_SA">
 <meta name="description" content="سجّل طلبك لدى وكالة ورق: بياناتك، كتابك وحالته، والخدمة اللي تحتاجها.">
 <meta name="theme-color" content="#f3f5f1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2316223a'/%3E%3Crect x='10' y='38' width='44' height='12' fill='%23ffd84a'/%3E%3Ctext x='32' y='44' font-family='Tahoma' font-weight='700' font-size='34' fill='%23fff' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
@@ -119,7 +124,7 @@ body.loading .intro,body.loading .layout{visibility:hidden}
 .preview .sel-sec{outline:3px solid var(--mark)!important;outline-offset:4px}
 @media (max-width:900px){
   .layout{grid-template-columns:1fr;gap:28px}
-  aside.after{position:static}
+  aside.after{position:static;order:-1}
 }
 @media (max-width:600px){
   .grid{grid-template-columns:1fr}
@@ -128,6 +133,9 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   .brand span{display:none}
   .intro{padding:36px 0 26px}
 }
+/* خطأ تحت الحقل */
+.ferr{color:var(--bad);font-family:var(--display);font-size:.88rem;margin-top:6px}
+.f select[aria-invalid="true"],.f textarea[aria-invalid="true"]{border-color:var(--bad);background-color:#fff6f5}
 /* «+ خدمات أخرى» */
 .morebtn{font-family:var(--display);font-weight:700;font-size:.92rem;border:1.5px dashed var(--ink);background:transparent;color:var(--ink);padding:6px 16px;cursor:pointer}
 .morebtn:hover,.morebtn[aria-expanded="true"]{background:var(--mark);border-style:solid}
@@ -183,6 +191,7 @@ body.loading .intro,body.loading .layout{visibility:hidden}
           <button type="submit" class="btn" id="go"><span class="spin" aria-hidden="true"></span><span class="t">أرسل الطلب</span></button>
           <span class="err" id="err" role="alert"></span>
           <p class="agree" id="agree"></p>
+          <p class="agree">بإرسال الطلب توافق على استخدام بياناتك للتواصل معك بخصوصه، كما في <a href="privacy.html">سياسة الخصوصية</a>.</p>
         </div>
       </form>
 
@@ -208,8 +217,9 @@ body.loading .intro,body.loading .layout{visibility:hidden}
     </aside>
   </div>
 </div>
-<script src="config.js"></script>
-<script src="js/content.js"></script>
-<script src="js/request.js"></script>
+<noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
+<script src="config.js?v=20261120"></script>
+<script src="js/content.js?v=20261120"></script>
+<script src="js/request.js?v=20261120"></script>
 </body>
 </html>

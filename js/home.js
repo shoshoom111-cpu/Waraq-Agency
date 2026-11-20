@@ -17,7 +17,8 @@ function lines(s){return String(s||"").split("\n").map(function(x){return x.trim
 function tags(s){return String(s||"").split(/[،,]/).map(function(x){return x.trim()}).filter(Boolean)}
 function wa(text){return "https://wa.me/"+WA+"?text="+encodeURIComponent(text)}
 function reqLink(q){var p=new URLSearchParams();Object.keys(q).forEach(function(k){if(q[k])p.set(k,q[k])});var s=p.toString();return "request.html"+(s?"?"+s:"")}
-function socials(){return '<span class="soc">'+vis(C.brand.socials).filter(function(s){return s.url}).map(function(s){return '<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.name)+'</a>'}).join("")+'</span>'}
+function safeUrl(u){u=String(u||"").trim();return /^(https?:|mailto:|tel:|#|\/|[\w.\-]+\.html)/i.test(u)?u:"#"}
+function socials(){return '<span class="soc">'+vis(C.brand.socials).filter(function(s){return s.url}).map(function(s){return '<a href="'+esc(safeUrl(s.url))+'" target="_blank" rel="noopener">'+esc(s.name)+'</a>'}).join("")+'</span>'}
 function head(n,d){return '<div class="head"><span class="folio">ص '+ar(n)+'</span><h2>'+esc(d.title)+'</h2>'+(d.sub?'<p>'+esc(d.sub)+'</p>':'')+'</div>'}
 function anchor(s){return s.type==="request"?"request.html":"#"+s.id}
 
@@ -46,8 +47,8 @@ var R={
       var href=reqLink({pick:c.pick,pkg:c.title+(pub&&!/\(.*\)$/.test(c.title)?" (دار نشر)":""),who:pub?pubWho:""});
       var more=(c.text?'<p>'+esc(c.text)+'</p>':'')+(lines(c.items).length?'<ul>'+lines(c.items).map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'');
       return '<article class="card'+(c.star?' star':'')+'">'+(c.label?'<span class="lbl">'+esc(c.label)+'</span>':'')+'<h3>'+esc(c.title)+'</h3>'+
-        (more?'<details class="more"><summary>'+esc(d.more||"التفاصيل")+CHEV+'</summary>'+more+'</details>':'')+'<span class="grow"></span>'+
-        '<a class="btn'+(c.star?'':' line')+'" href="'+esc(href)+'">'+esc(d.button||"اطلب هذه الحملة")+'</a></article>';
+        (more?'<details class="more"><summary aria-label="'+esc((d.more||"التفاصيل")+": "+c.title)+'">'+esc(d.more||"التفاصيل")+CHEV+'</summary>'+more+'</details>':'')+'<span class="grow"></span>'+
+        '<a class="btn'+(c.star?'':' line')+'" href="'+esc(href)+'" aria-label="'+esc((d.button||"اطلب هذه الحملة")+": "+c.title)+'">'+esc(d.button||"اطلب هذه الحملة")+'</a></article>';
     }
     return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],d)+
       (two?'<div class="aud" role="tablist" aria-label="نوع العميل"><button type="button" role="tab" id="t-auth-'+i+'" data-tab="a" aria-selected="true" aria-controls="pk-a-'+i+'">'+esc(d.tabA)+'</button>'+
@@ -105,7 +106,7 @@ var R={
       '<div><label for="mk-price">سعرك للمقطع (ريال)</label><input type="text" id="mk-price" inputmode="numeric" maxlength="40"></div>'+
       '<fieldset class="full"><legend>رخصة موثوق</legend><div class="picks" id="mk-lic">'+["لدي رخصة","قيد الإصدار","لا يوجد"].map(function(p,k){return '<label for="lc-'+(k+1)+'"><input type="radio" name="lic" id="lc-'+(k+1)+'" value="'+p+'">'+p+'</label>'}).join("")+'</div></fieldset>'+
       '<div class="hp" aria-hidden="true"><label for="mk-web">اترك هذا الحقل فارغًا</label><input type="text" id="mk-web" tabindex="-1" autocomplete="off"></div>'+
-      '<div class="full send"><button type="submit" class="btn" id="mk-go"><span class="spin" aria-hidden="true"></span><span class="t">'+esc(d.button||"أرسل طلب الانضمام")+'</span></button><span class="err" id="mk-err" role="alert"></span></div>'+
+      '<div class="full send"><button type="submit" class="btn" id="mk-go"><span class="spin" aria-hidden="true"></span><span class="t">'+esc(d.button||"أرسل طلب الانضمام")+'</span></button><span class="err" id="mk-err" role="alert"></span><p class="consent">بإرسال الطلب توافق على استخدام بياناتك للتواصل معك بخصوص الانضمام، كما في <a href="privacy.html">سياسة الخصوصية</a>.</p></div>'+
       '<div class="out" id="mk-out" hidden tabindex="-1"><div class="ok" hidden><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#ffd84a" stroke="currentColor" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>'+
         '<div><h3><span>'+esc(d.okTitle)+'</span></h3><p>رقم الطلب <span class="ref"></span>. '+esc(d.okText)+'</p></div></div>'+
         '<div class="fb"><p class="note warn" hidden></p><label for="mk-text">طلب الانضمام جاهز للإرسال</label><textarea id="mk-text" readonly></textarea>'+
@@ -128,7 +129,7 @@ function render(content){
   var html='<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>'+
     '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span></a>'+
     '<a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
-    vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(l.url)+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
+    vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(safeUrl(l.url))+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
     navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+
     '<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
     '<main id="top">'+C.sections.map(function(s,i){return s.hidden||!R[s.type]?"":R[s.type](s,i,ctx)}).join("")+'</main>'+
@@ -183,24 +184,25 @@ function db(){
 function waSend(d,subject,ls){
   var ph=String(d.waPhone||"").replace(/\D/g,""), key=String(d.waKey||"").trim(); if(ph.length<10||!key)return;
   var text=(subject+"\n\n"+ls.filter(function(l,i){return i>1||l}).join("\n")).slice(0,1500);
-  try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors"}).catch(function(){})}catch(e){}
+  try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}
 }
 function notify(x,subject,ls){
   return x.fs.getDoc(x.fs.doc(x.db,"siteSettings","notify")).then(function(s){
     var d=s.exists()?s.data():{}, em=String(d.email||"").trim();
     waSend(d,subject,ls);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return;
-    return fetch("https://formsubmit.co/ajax/"+em,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},
+    return fetch("https://formsubmit.co/ajax/"+em,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Accept":"application/json"},
       body:JSON.stringify({_subject:subject,_template:"box",_captcha:"false",message:ls.join("\n")+"\n\nتفاصيل الطلب في صفحة طلبات الوكالة ولوحة المسوقين."})});
   }).catch(function(e){if(window.console)console.warn("notify:",e)});
 }
-function save(col,data,ls){
-  var work=db().then(function(x){
+function save(col,data,ls,onLate){
+  return db().then(function(x){
     Object.keys(data).forEach(function(k){if(data[k]==="")delete data[k]});
     data.state="new";data.createdAt=x.fs.serverTimestamp();data.source=(location.hostname||"local").slice(0,100);
-    return x.fs.addDoc(x.fs.collection(x.db,col),data).then(function(ref){notify(x,"طلب انضمام مسوق: "+data.name,ls);return ref});
+    var work=x.fs.addDoc(x.fs.collection(x.db,col),data).then(function(ref){notify(x,"طلب انضمام مسوق: "+data.name,ls);return ref});
+    var late=false; work.then(function(ref){if(late&&onLate)onLate(ref)},function(){});
+    return Promise.race([work,new Promise(function(_,rej){setTimeout(function(){late=true;rej(new Error("timeout"))},20000)})]);
   });
-  return Promise.race([work,new Promise(function(_,rej){setTimeout(function(){rej(new Error("timeout"))},15000)})]);
 }
 if(hasDB&&!PREVIEW)document.addEventListener("focusin",function f(e){if(e.target.closest&&e.target.closest("#mk-form")){document.removeEventListener("focusin",f);db().catch(function(){})}});
 
@@ -219,7 +221,7 @@ document.addEventListener("submit",function(e){
   if(e.target.id!=="mk-form")return;
   e.preventDefault(); if(PREVIEW)return;
   var form=e.target;$("mk-err").textContent="";each(form.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});
-  if(val("mk-web"))return;
+  if(val("mk-web"))return showOut(true,"------");
   var name=val("mk-name"),handle=val("mk-handle"),plat=checked("mk-plat"),contact=val("mk-contact");
   if(!name)return fail("mk-name","اكتب اسمك.");
   if(!handle)return fail("mk-handle","اكتب اسم حسابك.");
@@ -234,7 +236,8 @@ document.addEventListener("submit",function(e){
   if(d.license)t.push("رخصة موثوق: "+d.license);
   if(!hasDB)return showOut(false,"",t);
   var btn=$("mk-go");busy(btn,true);
-  save("joinRequests",d,t).then(function(ref){busy(btn,false);form.reset();showOut(true,ref.id.slice(0,6).toUpperCase())},
+  var okd=function(ref){busy(btn,false);form.reset();showOut(true,ref.id.slice(0,6).toUpperCase())};
+  save("joinRequests",d,t,okd).then(okd,
     function(err){busy(btn,false);if(window.console)console.warn("Firestore:",err);showOut(false,"",t,"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). انسخه وأرسله على حساباتنا.")});
 });
 document.addEventListener("input",function(e){if(e.target.removeAttribute)e.target.removeAttribute("aria-invalid")});
@@ -250,6 +253,7 @@ if(PREVIEW){
   document.documentElement.classList.add("preview");
   var host=window.parent!==window?window.parent:window.opener;
   window.addEventListener("message",function(e){
+    if(e.origin!==location.origin)return;
     var m=e.data||{};
     if(m.type==="waraq-content"&&m.id==="home"){if(m.request&&m.request.parts)whoOpts=reqWho(m.request);render(m.content);mark(m.focus)}
     if(m.type==="waraq-focus")mark(m.sec,true);
@@ -271,10 +275,12 @@ function mark(sec,scroll){
 
 if(!PREVIEW){
   WaraqContent.load("request",function(r){whoOpts=reqWho(r)});
+  var dirty=false;
+  document.addEventListener("input",function(e){if(e.target.closest&&e.target.closest("#mk-form"))dirty=true});
+  document.addEventListener("change",function(e){if(e.target.closest&&e.target.closest("#mk-form"))dirty=true});
   WaraqContent.load("home",function(c,net){
-    // لا نعيد الرسم إذا الزائر بدأ يكتب في النموذج
-    if(C&&net){var f=document.activeElement;if(f&&f.closest&&f.closest("form"))return}
-    render(c);
+    if(C&&net&&dirty)return;   // ما نعيد الرسم والزائر يكتب في نموذج الانضمام
+    try{render(c)}catch(err){if(window.console)console.warn("render:",err);try{localStorage.removeItem("waraq-content-home")}catch(x){}render(WaraqContent.defaults("home"))}
   });
 }
 })();
