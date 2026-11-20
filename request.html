@@ -128,6 +128,15 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   .brand span{display:none}
   .intro{padding:36px 0 26px}
 }
+/* «+ خدمات أخرى» */
+.morebtn{font-family:var(--display);font-weight:700;font-size:.92rem;border:1.5px dashed var(--ink);background:transparent;color:var(--ink);padding:6px 16px;cursor:pointer}
+.morebtn:hover,.morebtn[aria-expanded="true"]{background:var(--mark);border-style:solid}
+.morebox{margin-top:12px;padding:12px;border:1.5px solid var(--rule);background:var(--paper);display:grid;gap:10px}
+.morebox .picks label{background:var(--sheet)}
+.otherlab{font-family:var(--display);font-weight:700;font-size:.88rem}
+.morebox input.other{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--sheet);border:1.5px solid var(--rule);border-radius:0;padding:9px 12px}
+.morebox input.other:focus{outline:0;border-color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.morebox:not([hidden]){animation:condIn .3s var(--ease) both}}
 /* «+ أضف خدمة» */
 .sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .srows{display:grid;gap:12px}

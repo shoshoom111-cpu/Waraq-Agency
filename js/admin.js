@@ -337,8 +337,8 @@ const TYPES = {
     make: () => WC.defaults("home").sections.find(s => s.type === "join").data }
 };
 const CARD = [S("label", "الوسم الصغير"), S("title", "اسم الحملة", "text", { title: true }), S("text", "الوصف"), S("items", "المميزات", "area", { hint: "كل سطر ميزة" }), S("pick", "تنختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" }), S("star", "تمييزها (الأكثر طلبًا)", "bool")];
-TYPES.campaigns.fields[5] = L("a", "حملات التبويب الأول", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
-TYPES.campaigns.fields[6] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
+TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "a")] = L("a", "حملات التبويب الأول", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
+TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "b")] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
 const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("tagline", "الوصف القصير"), S("cta", "زر «اطلب خدمة» في الأعلى"), S("whatsapp", "رقم الواتساب", "text", { hint: "بالصيغة الدولية مثل 9665XXXXXXXX. فاضي = أزرار الواتساب مخفية", ltr: true }),
   S("handle", "اسم الحساب", "text", { ltr: true }), S("domain", "الدومين", "text", { ltr: true }), S("year", "سنة الحقوق"),
   L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name"),
@@ -442,7 +442,11 @@ function fieldEditor(f, base, pi, parts) {
       `<p class="hint">مين ينفذ كل خدمة تحددينه من «الإعدادات» ← منفذو الخدمات.</p>`
     : isChoice
     ? listHTML(L("options", "الخيارات" + (f.type === "select" ? " (خيار يبدأ بـ # = عنوان مجموعة)" : ""),
-        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين بعد ما تقبلينه", "bool"), S("sub", "", "subs")], { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : [])
+        [S("t", "نص الخيار", "text", { title: true }), S("dash", "لو اختاره العميل، الطلب يروح للوحة المسوقين بعد ما تقبلينه", "bool")].concat(f.type === "checks" ? [S("more", "يظهر بعد ما يضغط العميل زر «خدمات أخرى»", "bool")] : []).concat([S("sub", "", "subs")]), { t: "خيار جديد" }, "t"), base + ".options", Array.isArray(f.options) ? f.options : []) +
+      (f.type === "checks" ? `<div class="lst when"><h4>زر «خدمات أخرى»</h4><p class="hint">يطلع الزر لو فيه خيار معلّم «يظهر بعد ما يضغط العميل زر خدمات أخرى»، أو لو فعّلتي الكتابة.</p>` +
+        inputHTML(S("moreText", "نص الزر", "text", { hint: "فاضي = «+ خدمات أخرى»" }), base, f) +
+        inputHTML(S("other", "العميل يقدر يكتب خدمة من عنده", "bool"), base, f) +
+        (f.other ? inputHTML(S("otherLabel", "عنوان خانة الكتابة", "text", { hint: "فاضي = «خدمة غير موجودة؟ اكتبها»" }), base, f) + inputHTML(S("otherPh", "النص الرمادي داخل الخانة"), base, f) : "") + `</div>` : "")
     : f.type === "text" ? inputHTML(S("options", "اقتراحات تطلع للعميل", "area", { hint: "اختياري، كل سطر اقتراح", rows: 3 }), base, f) : "";
   return inputHTML(S("label", "اسم الحقل", "text", { title: true }), base, f) +
     (f.key === "name" ? inputHTML(S("altLabel", "اسمه لما يختار الخيار الثاني في «أنت»", "text", { hint: "مثل: اسم دار النشر" }), base, f) : "") +
@@ -555,6 +559,7 @@ panel.addEventListener("input", (e) => {
   setP(CUR.data, p, el.type === "checkbox" ? el.checked : el.value);
   if (/\.(fields|sub)\.\d+\.type$/.test(p)) WC.normField(getP(CUR.data, p.slice(0, -5)));
   if (/\.options\.\d+\.dash$/.test(p)) el.dataset.re = "1";
+  if (/\.(other|more)$/.test(p)) el.dataset.re = "1";
   if (el.dataset.title) { const t = el.closest(".card")?.querySelector(":scope>summary .tt"); if (t) t.textContent = el.value; }
   changed(!!el.dataset.re);
 });
@@ -601,7 +606,7 @@ panel.addEventListener("click", (e) => {
   }
   if (op === "part-add") { const pt = { id: uid("p"), title: "قسم جديد", fields: [] }; D.parts.push(pt); OPEN.request["part:" + pt.id] = true; changed(true); return; }
   if (op === "fld-add") { const f = { id: uid("f-"), key: uid("c_"), type: "text", label: "حقل جديد", width: "half" }; D.parts[+b.dataset.pi].fields.push(f); OPEN.request["fld:" + f.id] = true; changed(true); return; }
-  const arr = getP(D, p); if (!Array.isArray(arr)) return;
+  let arr = getP(D, p); if (arr === undefined && op === "add") { setP(D, p, []); arr = getP(D, p); } if (!Array.isArray(arr)) return;
   if (op === "add") { arr.push(JSON.parse(b.dataset.tpl)); OPEN[CUR.id][p + "." + (arr.length - 1)] = true; }
   else if (op === "up" && i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
   else if (op === "down" && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];

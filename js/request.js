@@ -23,7 +23,7 @@ function expand(fs){var out=[];fs.forEach(function(f){out.push(f);if(!WaraqConte
 function fields(){var out=[];vis(R.parts).forEach(function(p){expand(vis(p.fields)).forEach(function(f){out.push(f)})});return out}
 function locked(f){return LOCKED[f.key]}
 /* حقل مشروط: f.when={f: id حقل الاختيار, o: [ids الخيارات]}. يظهر بس لما العميل يختار وحدة منها. */
-function optList(f){return Array.isArray(f.options)?f.options.map(function(o,i){return o&&{id:o.id||("o"+i),t:String(o.t||"").trim(),hidden:o.hidden}}).filter(function(o){return o&&o.t&&!o.hidden&&o.t.charAt(0)!=="#"}):[]}
+function optList(f){return Array.isArray(f.options)?f.options.map(function(o,i){return o&&{id:o.id||("o"+i),t:String(o.t||"").trim(),hidden:o.hidden,more:!!o.more}}).filter(function(o){return o&&o.t&&!o.hidden&&o.t.charAt(0)!=="#"}):[]}
 function whenSrc(f){if(!f.when||!f.when.f||locked(f))return null;return fields().filter(function(x){return x.id===f.when.f&&x!==f})[0]||null}
 function whenTexts(f){var src=whenSrc(f),ids=(f.when&&f.when.o)||[];return src?optList(src).filter(function(o){return ids.indexOf(o.id)>-1}).map(function(o){return o.t}):[]}
 function pickedIn(src){var v=valueOf(src);return Array.isArray(v)?v:v?[v]:[]}
@@ -50,6 +50,14 @@ function fieldHTML(f,pi){
   if(f.type==="svclist"){
     return h+'<span class="lab" id="'+id+'-l">'+lab+'</span><div class="srows" id="'+id+'" data-svc="'+esc(f.id)+'" role="group" aria-labelledby="'+id+'-l"></div>'+
       '<button type="button" class="addsvc" data-addsvc="'+esc(f.id)+'"><span aria-hidden="true">+</span> '+esc(f.addText||"أضف خدمة")+'</button></div>';
+  }
+  if(f.type==="checks"&&(f.other||optList(f).some(function(o){return o.more}))){
+    var main=optList(f).filter(function(o){return !o.more}), extra=optList(f).filter(function(o){return o.more});
+    var box=function(o){return '<label><input type="checkbox" name="'+id+'" value="'+esc(o.t)+'">'+esc(o.t)+'</label>'};
+    return h+'<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks" id="'+id+'" role="group" aria-labelledby="'+id+'-l">'+main.map(box).join("")+
+      '<button type="button" class="morebtn" data-more="'+esc(f.id)+'" aria-expanded="false" aria-controls="'+id+'-more">'+esc(f.moreText||"+ خدمات أخرى")+'</button></div>'+
+      '<div class="morebox" id="'+id+'-more" hidden>'+(extra.length?'<div class="picks">'+extra.map(box).join("")+'</div>':'')+
+      (f.other?'<label class="otherlab" for="'+id+'-other">'+esc(f.otherLabel||"خدمة غير موجودة؟ اكتبها")+'</label><input type="text" id="'+id+'-other" class="other" maxlength="200" placeholder="'+esc(f.otherPh||"اكتب الخدمة اللي تبيها")+'">':'')+'</div></div>';
   }
   if(f.type==="radio"||f.type==="checks"){
     var list=choices(f.options);
@@ -115,6 +123,7 @@ function prefill(){
     if(f.type==="select"){var sel=$("q-"+f.id);each(sel.options,function(o){if(same(o.value))sel.value=o.value})}
     else each(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){if(same(c.value))c.checked=true});
   });
+  each(document.querySelectorAll(".morebox"),function(b){if(b.querySelector("input:checked")){var btn=document.querySelector('[aria-controls="'+b.id+'"]');if(btn)openMore(btn,true)}});
   var pk=q.get("pick"), sv=fields().filter(function(f){return f.type==="svclist"})[0];
   if(pk&&sv){
     var hit=optList(sv).filter(function(o){return o.t===pk||o.t.indexOf(pk)===0||pk.indexOf(o.t)===0})[0], first=document.querySelector("#q-"+sv.id+" .srow select");
@@ -171,11 +180,24 @@ function svcValue(f){
   return out;
 }
 
+/* ---------- «+ خدمات أخرى» ---------- */
+function openMore(btn,open){var b=$(btn.getAttribute("aria-controls"));if(!b)return;b.hidden=!open;btn.setAttribute("aria-expanded",open)}
+document.addEventListener("click",function(e){
+  var m=e.target.closest&&e.target.closest("[data-more]"); if(!m)return;
+  var open=m.getAttribute("aria-expanded")!=="true"; openMore(m,open);
+  if(open){var first=$(m.getAttribute("aria-controls")).querySelector("input");if(first)first.focus()}
+});
+
 /* ---------- read answers ---------- */
 function valueOf(f){
   if(f.type==="svclist")return svcValue(f);
   if(f.type==="radio"){var c=document.querySelector('input[name="q-'+f.id+'"]:checked');return c?c.value:""}
-  if(f.type==="checks")return Array.prototype.filter.call(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){return c.checked}).map(function(c){return c.value});
+  if(f.type==="checks"){
+    var got=Array.prototype.filter.call(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){return c.checked}).map(function(c){return c.value});
+    var ot=$("q-"+f.id+"-other"), ov=ot?ot.value.trim():"";
+    if(ov&&got.indexOf(ov)<0)got.push(ov.slice(0,200));
+    return got;
+  }
   var el=$("q-"+f.id);return el?el.value.trim():"";
 }
 function fail(f,msg){
