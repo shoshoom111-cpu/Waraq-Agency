@@ -82,6 +82,10 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .exrow b{font-family:var(--display);font-size:.92rem}
 .exrow select,.exrow input{width:100%;font:inherit;font-size:.92rem;border:1.5px solid var(--rule);background:var(--paper);padding:6px 8px}
 .exrow .fixed{grid-column:2/-1;font-family:var(--display);font-size:.85rem;color:var(--muted)}
+.exrow.team{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr) auto}
+.exrow.team.head{padding:4px 0;font-family:var(--display);font-size:.78rem;color:var(--muted);border-bottom:2px solid var(--ink)}
+@media (max-width:760px){.exrow.team{grid-template-columns:1fr 1fr}.exrow.team.head{display:none}}
+.route select{font:inherit;font-size:.88rem;border:1.5px solid var(--rule);background:var(--paper);padding:4px 8px;max-width:100%}
 @media (max-width:760px){.exrow{grid-template-columns:1fr 1fr}.exrow b{grid-column:1/-1}.exrow .fixed{grid-column:1/-1}}
 .routes{margin:14px 0 4px;border-top:1px solid var(--rule);padding-top:12px}
 .routes h4{font-family:var(--display);font-size:.88rem;margin:0 0 8px}
@@ -312,11 +316,11 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <p class="hint">تنبيه: المفتاح يكون موجود في كود الموقع. لو جتك رسائل مزعجة، اطلبي مفتاح جديد من CallMeBot وحطيه هنا.</p>
     </section>
     <section class="panelbox" aria-labelledby="ex-h">
-      <h2 id="ex-h"><span class="hlx">منفذو الخدمات</span></h2>
-      <p class="hint">لكل خدمة: مين ينفذها. لما تضغطين «قبول» على طلب، كل خدمة فيه تروح لمنفذها: الإيميل ينرسل تلقائيًا، والواتساب يطلع لك زر يفتح المحادثة والرسالة جاهزة. «أنا» يعني ما يترسل لأحد.</p>
-      <div id="exec-list"></div>
-      <div class="acts"><button class="btn sm" type="button" id="exec-save">حفظ</button><span class="saved" id="exec-msg" aria-live="polite"></span></div>
-      <p class="hint">أول مرة ينرسل لإيميل منفذ، يوصله إيميل تفعيل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>. لازم يضغطه مرة وحدة عشان توصله الطلبات بعدها. الخدمات نفسها تضيفينها من «تعديل صفحة الطلبات».</p>
+      <h2 id="ex-h"><span class="hlx">الفريق</span></h2>
+      <p class="hint">الأشخاص اللي تنرسل لهم الخدمات (مصمم، مونتير…). في كل طلب تختارين لكل خدمة مين ينفذها، ولما تضغطين «قبول»: يوصله إيميل تلقائيًا إذا له إيميل، ويطلع لك زر «إرسال بالواتساب» على رقمه.</p>
+      <div id="team-list"></div>
+      <div class="acts"><button class="btn line sm" type="button" id="team-add">+ إضافة شخص</button><button class="btn sm" type="button" id="team-save">حفظ</button><span class="saved" id="team-msg" aria-live="polite"></span></div>
+      <p class="hint">أول مرة ينرسل لإيميل شخص، يوصله إيميل تفعيل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>، لازم يضغطه مرة وحدة.</p>
     </section>
     <section class="panelbox">
       <h2><span class="hlx">وين أعدّل الباقي؟</span></h2>
@@ -331,8 +335,8 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=20261120b"></script>
-<script src="js/content.js?v=20261120b"></script>
-<script type="module" src="js/admin.js?v=20261120b"></script>
+<script src="config.js?v=20261120d"></script>
+<script src="js/content.js?v=20261120d"></script>
+<script type="module" src="js/admin.js?v=20261120d"></script>
 </body>
 </html>

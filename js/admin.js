@@ -72,7 +72,7 @@ function route() {
   $("frame").classList.toggle("wide", v === "home" || v === "form");
   if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
   if (v === "history") loadHistory();
-  if (v === "settings") renderExec();
+  if (v === "settings") renderTeam();
 }
 window.addEventListener("hashchange", route);
 
@@ -91,7 +91,9 @@ const RQ = { requests: [], joinRequests: [] }, RQL = { requests: false, joinRequ
 const eff = (d) => d.agencyOk && d.state === "new" ? "approved" : d.state;
 let EXEC = {};
 const EXEC_DOC = () => F.doc(db, "siteSettings", "executors");
-async function loadExec(strict) { try { const s = await F.getDoc(EXEC_DOC()); EXEC = s.exists() ? (s.data().map || {}) : {}; } catch (err) { if (strict) throw err; EXEC = {}; } }
+let PEOPLE = [];
+async function loadExec(strict) { try { const s = await F.getDoc(EXEC_DOC()), x = s.exists() ? s.data() : {}; EXEC = x.map || {}; PEOPLE = Array.isArray(x.people) ? x.people : []; } catch (err) { if (strict) throw err; EXEC = {}; PEOPLE = []; } }
+const person = (id) => PEOPLE.find(p => p.id === id);
 /* نموذج الطلب المنشور (مو المسودة): منه نعرف الخدمات ومنفذيها */
 let PUBD = null;
 const pubReq = () => { try { return prep("request", ED.request.pub || JSON.stringify(WC.defaults("request"))); } catch { return null; } };
@@ -109,9 +111,10 @@ function svcOption(D, kind, val) {
 /* كل خدمة في الطلب ومين ينفذها */
 function routesOf(d, D) {
   D = D || PUBD; const seen = new Set(), out = [];
+  const asg = d.assign || {};
   const add = (name, det, hit) => { name = String((hit && hit.name) || name || "").trim(); if (!name || seen.has(name)) return; seen.add(name);
-    const e = (hit && EXEC[hit.ref]) || EXEC[name] || {}, kind = hit && hit.dash ? "dash" : (e.kind || "me");
-    out.push({ name, det: det || "", kind, to: e.to || "", who: e.name || "" }); };
+    const who = person(asg[name]), kind = hit && hit.dash ? "dash" : who ? "person" : "me";
+    out.push({ name, det: det || "", kind, who }); };
   (d.services || []).forEach(x => add(x.s, x.d, D && (svcOption(D, "id", x.id) || svcOption(D, "name", String(x.s || "").trim()))));
   (d.picks || []).forEach(p => add(p, "", D && svcOption(D, "name", String(p || "").trim())));
   return out;
@@ -132,30 +135,41 @@ function sendExecEmail(to, d, items) {
 function routesHTML(d) {
   const rs = routesOf(d); if (!rs.length) return "";
   const done = eff(d) === "approved";
-  return `<div class="routes"><h4>${done ? "انرسل للمنفذين" : "لما تقبلين، كل خدمة تروح لـ"}</h4>` + rs.map(r => {
-    const where = r.kind === "dash" ? "لوحة المسوقين" : r.kind === "email" ? "إيميل" + (r.who ? ": " + r.who : "") : r.kind === "wa" ? "واتساب" + (r.who ? ": " + r.who : "") : "أنا (بدون إرسال)";
+  const opts = (sel) => `<option value="">أنا (بدون إرسال)</option>` + PEOPLE.map(p => `<option value="${esc(p.id)}"${p.id === sel ? " selected" : ""}>${esc(p.name)}${p.role ? " — " + esc(p.role) : ""}</option>`).join("");
+  return `<div class="routes"><h4>${done ? "الخدمات ومنفذينها" : "كل خدمة لمين؟ اختاري ثم اضغطي «قبول»"}</h4>` + rs.map(r => {
+    if (r.kind === "dash") return `<div class="route"><b>${esc(r.name)}</b><span class="to">← لوحة المسوقين</span></div>`;
+    const sel = r.who ? r.who.id : "";
     let act = "";
-    if (done && r.kind === "wa" && r.to) act = `<a class="btn sm" href="https://wa.me/${waNum(r.to)}?text=${encodeURIComponent(execMsg(d, [r]))}" target="_blank" rel="noopener">إرسال بالواتساب</a>`;
-    if (done && r.kind === "email" && r.to) act = `<button class="btn line sm" type="button" data-resend="${d.id}" data-svc="${esc(r.name)}">إعادة إرسال الإيميل</button>`;
-    if ((r.kind === "email" || r.kind === "wa") && !r.to) act = `<span class="to">ما فيه ${r.kind === "wa" ? "رقم" : "إيميل"} — حدديه في الإعدادات</span>`;
-    return `<div class="route"><b>${esc(r.name)}</b><span class="to">← ${esc(where)}</span>${act}</div>`;
-  }).join("") + `</div>`;
+    if (done && r.who) {
+      const n = waNum(r.who.phone);
+      if (n.length >= 10) act += `<a class="btn sm" href="https://wa.me/${n}?text=${encodeURIComponent(execMsg(d, [r]))}" target="_blank" rel="noopener">إرسال بالواتساب</a>`;
+      if (r.who.email) act += `<button class="btn line sm" type="button" data-resend="${d.id}" data-svc="${esc(r.name)}">إعادة إرسال الإيميل</button>`;
+    }
+    return `<div class="route"><b>${esc(r.name)}</b><select data-assign data-id="${d.id}" data-svc="${esc(r.name)}" aria-label="منفذ ${esc(r.name)}">${opts(sel)}</select>${act}</div>`;
+  }).join("") + (PEOPLE.length ? "" : `<p class="hint">أضيفي الفريق من «الإعدادات» عشان يطلعون هنا.</p>`) + `</div>`;
+}
+/* اختيارات المنفذين الظاهرة في الطلب المفتوح (حتى لو ما وصل حفظها لسا) */
+function liveAssign(d) {
+  const a = { ...(d.assign || {}) };
+  document.querySelectorAll(`[data-assign][data-id="${d.id}"]`).forEach(el => { a[el.dataset.svc] = el.value; });
+  return a;
 }
 async function approve(d) {
   let D;
   try {
     const [s] = await Promise.all([F.getDoc(F.doc(db, "siteContent", "request")), loadExec(true)]);
     D = prep("request", s.exists() && s.data().json ? s.data().json : JSON.stringify(WC.defaults("request"))); PUBD = D;
-  } catch (err) { toast("ما قدرت أحمّل إعدادات الخدمات، فما قبلت الطلب. تأكدي من الاتصال وجرّبي مرة ثانية."); return; }
-  const rs = routesOf(d, D), toDash = rs.some(r => r.kind === "dash"), byMail = {};
-  rs.filter(r => r.kind === "email" && r.to).forEach(r => (byMail[r.to] = byMail[r.to] || []).push(r));
-  await F.updateDoc(F.doc(db, "requests", d.id), toDash ? { dash: true, agencyOk: true, handledAt: F.serverTimestamp() } : { state: "approved", handledAt: F.serverTimestamp() });
-  const res = await Promise.all(Object.entries(byMail).map(([to, items]) => sendExecEmail(to, d, items)));
-  const wa = rs.filter(r => r.kind === "wa" && r.to).length, act = res.filter(x => x === "activate").length, bad = res.filter(x => x === "fail").length;
+  } catch (err) { toast("ما قدرت أحمّل الإعدادات، فما قبلت الطلب. تأكدي من الاتصال وجرّبي مرة ثانية."); return; }
+  const assign = liveAssign(d), dd = { ...d, assign };
+  const rs = routesOf(dd, D), toDash = rs.some(r => r.kind === "dash"), byMail = {};
+  rs.filter(r => r.kind === "person" && r.who.email).forEach(r => (byMail[r.who.email] = byMail[r.who.email] || []).push(r));
+  await F.updateDoc(F.doc(db, "requests", d.id), toDash ? { assign, dash: true, agencyOk: true, handledAt: F.serverTimestamp() } : { assign, state: "approved", handledAt: F.serverTimestamp() });
+  const res = await Promise.all(Object.entries(byMail).map(([to, items]) => sendExecEmail(to, dd, items)));
+  const wa = rs.filter(r => r.kind === "person" && waNum(r.who.phone).length >= 10).length, act = res.filter(x => x === "activate").length, bad = res.filter(x => x === "fail").length;
   const parts = ["قُبل الطلب."];
   if (toDash) parts.push("انتقل للوحة المسوقين.");
-  if (res.length) parts.push(`انرسل ${toAr(res.length - act - bad)} إيميل${act ? `، و${toAr(act)} يحتاج المنفذ يفعّل FormSubmit أول` : ""}${bad ? `، و${toAr(bad)} ما انرسل` : ""}.`);
-  if (wa) parts.push("اضغطي «إرسال بالواتساب» تحت كل خدمة.");
+  if (res.length) parts.push(`انرسل ${toAr(res.length - act - bad)} إيميل${act ? `، و${toAr(act)} يحتاج صاحبه يفعّل FormSubmit أول` : ""}${bad ? `، و${toAr(bad)} ما انرسل` : ""}.`);
+  if (wa) parts.push("اضغطي «إرسال بالواتساب» جنب كل خدمة.");
   toast(parts.join(" "));
 }
 let col = "requests", filter = "all", query = "", openId = null;
@@ -250,8 +264,8 @@ $("list").addEventListener("click", async (e) => {
   if (ac) { const d = RQ[col].find(x => x.id === ac.dataset.accept); ac.disabled = true;
     try { await approve(d); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } finally { ac.disabled = false; } return; }
   const rs = e.target.closest("[data-resend]");
-  if (rs) { const d = RQ[col].find(x => x.id === rs.dataset.resend), r = routesOf(d).find(x => x.name === rs.dataset.svc); if (!r) return;
-    rs.disabled = true; const res = await sendExecEmail(r.to, d, [r]); rs.disabled = false;
+  if (rs) { const d = RQ[col].find(x => x.id === rs.dataset.resend), r = routesOf(d).find(x => x.name === rs.dataset.svc); if (!r || !r.who || !r.who.email) return;
+    rs.disabled = true; const res = await sendExecEmail(r.who.email, d, [r]); rs.disabled = false;
     toast(res === "ok" ? "انرسل." : res === "activate" ? "المنفذ لازم يفعّل FormSubmit من الإيميل اللي وصله أول." : "ما انرسل. تأكدي من الإيميل والاتصال."); return; }
   const rj = e.target.closest("[data-reject]");
   if (rj) { if (!arm(rj, "اضغطي «رفض» مرة ثانية للتأكيد.")) return;
@@ -262,6 +276,12 @@ $("list").addEventListener("click", async (e) => {
   const cp = e.target.closest("[data-copy]");
   if (cp) { const d = RQ[col].find(x => x.id === cp.dataset.copy);
     try { await navigator.clipboard.writeText([`الاسم: ${d.name}`, ...rows(d).map(([l, v]) => `${l}: ${v}`)].join("\n")); toast("تم نسخ الطلب."); } catch { toast("تعذّر النسخ."); } }
+});
+$("list").addEventListener("change", async (e) => {
+  const el = e.target.closest("[data-assign]"); if (!el) return;
+  const d = RQ.requests.find(x => x.id === el.dataset.id); if (!d) return;
+  try { await F.updateDoc(F.doc(db, "requests", d.id), { assign: liveAssign(d) }); }
+  catch (err) { toast("ما انحفظ الاختيار: " + (err.code || err.message)); }
 });
 $("csv").addEventListener("click", () => {
   const list = RQ[col].filter(matches);
@@ -727,48 +747,46 @@ $("modal-close").addEventListener("click", closeModal);
 $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
 
 /* =============== settings =============== */
-function serviceList() {
-  const D = pubReq(), out = []; if (!D) return out;
-  reqFields(D).forEach(f => { if (!(f.key === "picks" || f.type === "svclist") || !Array.isArray(f.options)) return;
-    f.options.forEach(o => { const t = String((o && o.t) || "").trim(); if (!t || t.startsWith("#")) return;
-      const ref = f.id + "/" + o.id, x = out.find(y => y.t === t);
-      if (x) { x.dash = x.dash || !!o.dash; x.refs.push(ref); return; } out.push({ t, dash: !!o.dash, hidden: !!o.hidden, refs: [ref] }); }); });
-  return out;
+let TEAM = [];
+const teamRow = (p) => `<div class="exrow team" data-pid="${esc(p.id)}">
+  <input data-t="name" aria-label="الاسم" placeholder="الاسم" value="${esc(p.name || "")}">
+  <input data-t="role" aria-label="الوظيفة" placeholder="الوظيفة (مثل: مصمم)" value="${esc(p.role || "")}">
+  <input data-t="phone" aria-label="رقم الجوال" dir="ltr" inputmode="tel" placeholder="05xxxxxxxx" value="${esc(p.phone || "")}">
+  <input data-t="email" aria-label="الإيميل (اختياري)" dir="ltr" type="email" placeholder="الإيميل (اختياري)" value="${esc(p.email || "")}">
+  <button class="btn danger sm" type="button" data-tdel aria-label="حذف ${esc(p.name || "الشخص")}">حذف</button></div>`;
+async function renderTeam() {
+  const box = $("team-list"); box.innerHTML = '<div class="skel"></div>';
+  try { await loadExec(true); } catch (err) { box.innerHTML = `<p class="hint">تعذّر التحميل: ${esc(err.code || err.message)}</p>`; return; }
+  TEAM = PEOPLE.map(p => ({ ...p })); drawTeam();
 }
-const EXK = [["me", "أنا (بدون إرسال)"], ["email", "إيميل"], ["wa", "واتساب"]];
-async function renderExec() {
-  const box = $("exec-list"); box.innerHTML = '<div class="skel"></div>';
-  try { await Promise.all([loadContent("request"), loadExec()]); } catch (err) { box.innerHTML = `<p class="hint">تعذّر التحميل: ${esc(err.code || err.message)}</p>`; return; }
-  const list = serviceList();
-  if (!list.length) { box.innerHTML = '<p class="hint">ما فيه خدمات بعد. أضيفيها من «تعديل صفحة الطلبات».</p>'; return; }
-  box.innerHTML = list.map(s => {
-    const e = s.refs.map(r => EXEC[r]).find(Boolean) || EXEC[s.t] || {}, k = e.kind || "me", nm = esc(s.t) + (s.hidden ? " <small>(مخفية)</small>" : "");
-    if (s.dash) return `<div class="exrow"><b>${nm}</b><span class="fixed">← لوحة المسوقين (تنتقل لها لما تقبلين الطلب)</span></div>`;
-    return `<div class="exrow" data-ex="${esc(s.t)}" data-refs="${esc(s.refs.join(" "))}"><b>${nm}</b>
-      <select data-exk aria-label="منفذ ${esc(s.t)}">${EXK.map(([v, l]) => `<option value="${v}"${k === v ? " selected" : ""}>${l}</option>`).join("")}</select>
-      <input data-exn aria-label="اسم المنفذ" placeholder="اسم المنفذ (مثل: المصمم)" value="${esc(e.name || "")}"${k === "me" ? " hidden" : ""}>
-      <input data-ext aria-label="إيميل أو رقم المنفذ" dir="ltr" placeholder="${k === "wa" ? "9665XXXXXXXX" : "name@example.com"}" value="${esc(e.to || "")}"${k === "me" ? " hidden" : ""}></div>`;
-  }).join("");
+function drawTeam() {
+  $("team-list").innerHTML = TEAM.length ? `<div class="exrow team head"><span>الاسم</span><span>الوظيفة</span><span>الجوال</span><span>الإيميل</span><span></span></div>` + TEAM.map(teamRow).join("")
+    : '<p class="hint">ما فيه أحد. اضغطي «+ إضافة شخص».</p>';
 }
-$("exec-list").addEventListener("change", (e) => {
-  const sel = e.target.closest("[data-exk]"); if (!sel) return;
-  const row = sel.closest(".exrow"), k = sel.value;
-  row.querySelector("[data-exn]").hidden = k === "me"; const t = row.querySelector("[data-ext]"); t.hidden = k === "me";
-  t.placeholder = k === "wa" ? "9665XXXXXXXX" : "name@example.com"; if (k !== "me") t.focus();
+function readTeam() {
+  document.querySelectorAll("#team-list [data-pid]").forEach(row => {
+    const p = TEAM.find(x => x.id === row.dataset.pid); if (!p) return;
+    row.querySelectorAll("[data-t]").forEach(i => { p[i.dataset.t] = i.value.trim(); });
+  });
+}
+$("team-add").addEventListener("click", () => { readTeam(); TEAM.push({ id: uid("p"), name: "", role: "", phone: "", email: "" }); drawTeam(); const r = $("team-list").querySelector(".exrow.team:last-child input"); if (r) r.focus(); });
+$("team-list").addEventListener("click", (e) => {
+  const x = e.target.closest("[data-tdel]"); if (!x) return;
+  if (!arm(x, "اضغطي «حذف» مرة ثانية للتأكيد.")) return;
+  readTeam(); TEAM = TEAM.filter(p => p.id !== x.closest("[data-pid]").dataset.pid); drawTeam();
 });
-$("exec-save").addEventListener("click", async () => {
-  const m = $("exec-msg"), map = {}; let bad = null;
-  document.querySelectorAll("#exec-list [data-ex]").forEach(row => {
-    const k = row.querySelector("[data-exk]").value, to = row.querySelector("[data-ext]").value.trim(), nm = row.querySelector("[data-exn]").value.trim();
-    if (k === "email" && !okEmail(to)) bad = bad || row.dataset.ex + ": الإيميل غير صحيح";
-    if (k === "wa" && waNum(to).length < 10) bad = bad || row.dataset.ex + ": اكتبي الرقم مثل 9665XXXXXXXX";
-    const ent = k === "me" ? { kind: "me" } : { kind: k, to: k === "wa" ? waNum(to) : to, name: nm.slice(0, 80) };
-    map[row.dataset.ex] = ent; (row.dataset.refs || "").split(" ").filter(Boolean).forEach(r => { map[r] = ent; });
+$("team-save").addEventListener("click", async () => {
+  readTeam(); const m = $("team-msg"); let bad = null;
+  const list = TEAM.filter(p => p.name || p.phone || p.email || p.role).map(p => ({ id: p.id, name: p.name.slice(0, 80), role: (p.role || "").slice(0, 80), phone: waNum(p.phone), email: (p.email || "").slice(0, 120) }));
+  list.forEach(p => {
+    if (!p.name) bad = bad || "فيه شخص بدون اسم";
+    else if (p.phone.length < 10 || p.phone.length > 15) bad = bad || p.name + ": رقم الجوال غير صحيح";
+    else if (p.email && !okEmail(p.email)) bad = bad || p.name + ": الإيميل غير صحيح";
   });
   if (bad) { m.className = "saved err"; m.textContent = bad + "."; return; }
-  $("exec-save").disabled = true; m.textContent = "";
-  try { await F.setDoc(EXEC_DOC(), { map, updatedAt: F.serverTimestamp() }); EXEC = map; m.className = "saved"; m.textContent = "انحفظ."; }
-  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { $("exec-save").disabled = false; }
+  $("team-save").disabled = true; m.textContent = "";
+  try { await F.setDoc(EXEC_DOC(), { people: list, updatedAt: F.serverTimestamp() }, { merge: true }); PEOPLE = list; TEAM = list.map(p => ({ ...p })); drawTeam(); m.className = "saved"; m.textContent = "انحفظ."; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { $("team-save").disabled = false; }
 });
 const NOTIFY = F.doc(db, "siteSettings", "notify");
 const okEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
