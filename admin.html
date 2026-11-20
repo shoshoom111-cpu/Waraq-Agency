@@ -191,6 +191,12 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .panelbox h2{font-size:1.15rem;font-weight:800;margin-bottom:12px}
 .panelbox .hint{margin:6px 0 12px}
 
+.wadlg{border:0;padding:22px 24px;max-width:560px;width:calc(100% - 32px);background:var(--sheet);color:var(--ink);box-shadow:0 30px 60px -20px rgba(0,0,0,.45)}
+.wadlg::backdrop{background:rgba(22,34,58,.55)}
+.wadlg h2{font-family:var(--display);font-size:1.2rem;margin:0 0 6px}
+.wadlg label{display:block;font-family:var(--display);font-size:.85rem;margin:10px 0 4px}
+.wadlg textarea{width:100%;font:inherit;font-size:1rem;border:1.5px solid var(--rule);background:var(--paper);padding:10px;resize:vertical}
+.wadlg textarea:focus{outline:0;border-color:var(--ink);background:var(--sheet)}
 .modal{position:fixed;inset:0;background:rgba(22,34,58,.55);z-index:50;display:grid;grid-template-rows:auto 1fr;padding:20px}
 .modal .mbar{background:var(--sheet);display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;font-family:var(--display);font-size:.9rem}
 .modal iframe{width:100%;height:100%;border:0;background:var(--paper)}
@@ -315,6 +321,14 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="acts"><button class="btn sm" type="button" id="wa-save">حفظ</button><button class="btn line sm" type="button" id="wa-test">إرسال رسالة تجربة</button><span class="saved" id="wa-msg" aria-live="polite"></span></div>
       <p class="hint">تنبيه: المفتاح يكون موجود في كود الموقع. لو جتك رسائل مزعجة، اطلبي مفتاح جديد من CallMeBot وحطيه هنا.</p>
     </section>
+    <section class="panelbox" aria-labelledby="tpl-h">
+      <h2 id="tpl-h"><span class="hlx">رسائل الواتساب</span></h2>
+      <p class="hint">الكلمات اللي بين { } تتبدّل تلقائيًا: <b>{الاسم}</b> اسم العميل، <b>{الكتاب}</b> عنوان الكتاب، <b>{الوكالة}</b> اسم الوكالة، <b>{الخدمات}</b> الخدمات المطلوبة. وفي رسالة المنفذ: <b>{المنفذ}</b> اسمه و<b>{التفاصيل}</b> الخدمة ووصفها ومعلومات الكتاب.</p>
+      <div class="field"><label for="tpl-customer">رسالة العميل (طلب خدمة)</label><textarea id="tpl-customer" rows="4"></textarea></div>
+      <div class="field"><label for="tpl-join">رسالة المسوق (طلب انضمام)</label><textarea id="tpl-join" rows="3"></textarea></div>
+      <div class="field"><label for="tpl-exec">رسالة المنفذ (تنرسل له الخدمة، وتنرسل بالإيميل بعد)</label><textarea id="tpl-exec" rows="6"></textarea></div>
+      <div class="acts"><button class="btn sm" type="button" id="tpl-save">حفظ</button><button class="btn line sm" type="button" id="tpl-reset">رجوع للنص الأصلي</button><span class="saved" id="tpl-msg" aria-live="polite"></span></div>
+    </section>
     <section class="panelbox" aria-labelledby="ex-h">
       <h2 id="ex-h"><span class="hlx">الفريق</span></h2>
       <p class="hint">الأشخاص اللي تنرسل لهم الخدمات (مصمم، مونتير…). في كل طلب تختارين لكل خدمة مين ينفذها، ولما تضغطين «قبول»: يوصله إيميل تلقائيًا إذا له إيميل، ويطلع لك زر «إرسال بالواتساب» على رقمه.</p>
@@ -333,10 +347,18 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
   <div class="mbar"><span id="modal-t"></span><div class="acts"><button class="btn sm" type="button" id="modal-restore">استرجاع هذي النسخة</button><button class="btn line sm" type="button" id="modal-close">إغلاق</button></div></div>
   <iframe id="modal-frame" title="معاينة النسخة"></iframe>
 </div>
+<dialog id="wa-dlg" class="wadlg" aria-labelledby="wa-dlg-t">
+  <h2 id="wa-dlg-t"><span class="hlx">متأكدة من الإرسال؟</span></h2>
+  <p class="hint" id="wa-dlg-to"></p>
+  <label for="wa-dlg-msg">الرسالة (تقدرين تعدّلينها)</label>
+  <textarea id="wa-dlg-msg" rows="9"></textarea>
+  <p class="hint">لما تضغطين «إرسال» ينفتح الواتساب والرسالة جاهزة، وتضغطين إرسال فيه.</p>
+  <div class="acts"><button class="btn" type="button" id="wa-dlg-go">إرسال</button><button class="btn line" type="button" id="wa-dlg-no">إلغاء</button></div>
+</dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=20261120d"></script>
-<script src="js/content.js?v=20261120d"></script>
-<script type="module" src="js/admin.js?v=20261120d"></script>
+<script src="config.js?v=20261120e"></script>
+<script src="js/content.js?v=20261120e"></script>
+<script type="module" src="js/admin.js?v=20261120e"></script>
 </body>
 </html>

@@ -72,7 +72,7 @@ function route() {
   $("frame").classList.toggle("wide", v === "home" || v === "form");
   if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
   if (v === "history") loadHistory();
-  if (v === "settings") renderTeam();
+  if (v === "settings") { renderTeam(); renderTpl(); }
 }
 window.addEventListener("hashchange", route);
 
@@ -91,8 +91,15 @@ const RQ = { requests: [], joinRequests: [] }, RQL = { requests: false, joinRequ
 const eff = (d) => d.agencyOk && d.state === "new" ? "approved" : d.state;
 let EXEC = {};
 const EXEC_DOC = () => F.doc(db, "siteSettings", "executors");
-let PEOPLE = [];
-async function loadExec(strict) { try { const s = await F.getDoc(EXEC_DOC()), x = s.exists() ? s.data() : {}; EXEC = x.map || {}; PEOPLE = Array.isArray(x.people) ? x.people : []; } catch (err) { if (strict) throw err; EXEC = {}; PEOPLE = []; } }
+let PEOPLE = [], TPL = {};
+const TPL_DEF = {
+  customer: "السلام عليكم {الاسم}،\nوصلنا طلبك من موقع {الوكالة}، ونراجعه ونتواصل معك قريب.",
+  join: "أهلًا {الاسم}،\nوصلنا طلب انضمامك لشبكة مسوقي {الوكالة}.",
+  exec: "السلام عليكم {المنفذ}،\nعندنا طلب جديد من {الوكالة}:\n\n{التفاصيل}\n\nللتنسيق تواصل معنا."
+};
+const agency = () => { try { return (JSON.parse(ED.home.pub || "{}").brand || {}).name || "الوكالة"; } catch { return "الوكالة"; } };
+const fill = (t, v) => String(t || "").replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m)).replace(/\n{3,}/g, "\n\n").trim();
+async function loadExec(strict) { try { const s = await F.getDoc(EXEC_DOC()), x = s.exists() ? s.data() : {}; EXEC = x.map || {}; PEOPLE = Array.isArray(x.people) ? x.people : []; TPL = x.tpl || {}; } catch (err) { if (strict) throw err; EXEC = {}; PEOPLE = []; TPL = {}; } }
 const person = (id) => PEOPLE.find(p => p.id === id);
 /* نموذج الطلب المنشور (مو المسودة): منه نعرف الخدمات ومنفذيها */
 let PUBD = null;
@@ -119,17 +126,20 @@ function routesOf(d, D) {
   (d.picks || []).forEach(p => add(p, "", D && svcOption(D, "name", String(p || "").trim())));
   return out;
 }
-function execMsg(d, items) {
-  const head = ["طلب جديد من وكالة ورق", ""];
+function execMsg(d, items, who) {
+  const det = execDetails(d, items);
+  return fill(TPL.exec || TPL_DEF.exec, { "المنفذ": (who && who.name) || "", "الوكالة": agency(), "التفاصيل": det, "الاسم": d.name || "", "الكتاب": d.book || "" });
+}
+function execDetails(d, items) {
+  const head = [];
   items.forEach(r => { head.push("الخدمة: " + r.name); if (r.det) head.push("المطلوب: " + r.det); head.push(""); });
   [["الكتاب", d.book], ["النوع", d.genre], ["حالة الكتاب", d.status], ["الموعد", d.date], ["الرابط", d.link]].forEach(([l, v]) => { if (v) head.push(l + ": " + v); });
-  head.push("", "للتنسيق تواصل مع الوكالة.");
-  return head.join("\n");
+  return head.join("\n").trim();
 }
 const waNum = (v) => { let n = String(v || "").replace(/\D/g, ""); if (n.startsWith("00")) n = n.slice(2); if (n.startsWith("05") && n.length === 10) n = "966" + n.slice(1); return n; };
 function sendExecEmail(to, d, items) {
   return fetch("https://formsubmit.co/ajax/" + to, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-    body: JSON.stringify({ _subject: "طلب خدمة: " + items.map(r => r.name).join("، "), _template: "box", _captcha: "false", message: execMsg(d, items) }) })
+    body: JSON.stringify({ _subject: "طلب خدمة: " + items.map(r => r.name).join("، "), _template: "box", _captcha: "false", message: execMsg(d, items, items[0] && items[0].who) }) })
     .then(r => r.json().catch(() => ({}))).then(j => String(j.success) === "true" ? "ok" : /activat/i.test(j.message || "") ? "activate" : "fail").catch(() => "fail");
 }
 function routesHTML(d) {
@@ -142,7 +152,7 @@ function routesHTML(d) {
     let act = "";
     if (done && r.who) {
       const n = waNum(r.who.phone);
-      if (n.length >= 10) act += `<a class="btn sm" href="https://wa.me/${n}?text=${encodeURIComponent(execMsg(d, [r]))}" target="_blank" rel="noopener">إرسال بالواتساب</a>`;
+      if (n.length >= 10) act += `<button class="btn sm" type="button" data-wa="${n}" data-wato="${esc(r.who.name + (r.who.role ? " — " + r.who.role : ""))}" data-wam="${esc(execMsg(d, [r], r.who))}">إرسال بالواتساب</button>`;
       if (r.who.email) act += `<button class="btn line sm" type="button" data-resend="${d.id}" data-svc="${esc(r.name)}">إعادة إرسال الإيميل</button>`;
     }
     return `<div class="route"><b>${esc(r.name)}</b><select data-assign data-id="${d.id}" data-svc="${esc(r.name)}" aria-label="منفذ ${esc(r.name)}">${opts(sel)}</select>${act}</div>`;
@@ -174,7 +184,7 @@ async function approve(d) {
 }
 let col = "requests", filter = "all", query = "", openId = null;
 function startRequests() {
-  loadExec(); loadContent("request").then(() => { PUBD = pubReq(); if (VIEW === "requests") renderReq(); }).catch(() => {});
+  loadExec(); loadContent("home").catch(() => {}); loadContent("request").then(() => { PUBD = pubReq(); if (VIEW === "requests") renderReq(); }).catch(() => {});
   Object.keys(RQ).forEach(c => {
     const q = F.query(F.collection(db, c), F.orderBy("createdAt", "desc"), F.limit(1000));
     unsubs.push(F.onSnapshot(q, (snap) => {
@@ -214,8 +224,8 @@ function contactLinks(d) {
     let n = String(d.phone).replace(/\D/g, "");
     if (n.startsWith("00")) n = n.slice(2);
     if (n.startsWith("05") && n.length === 10) n = "966" + n.slice(1); else if (n.startsWith("5") && n.length === 9) n = "966" + n;
-    const hi = col === "requests" ? `السلام عليكم ${d.name}،\nوصلنا طلبك${d.book ? " لكتاب «" + d.book + "»" : ""} من موقع وكالة ورق.` : `أهلًا ${d.name}،\nوصلنا طلب انضمامك لشبكة مسوقي وكالة ورق.`;
-    out += `<a class="btn sm" href="https://wa.me/${n}?text=${encodeURIComponent(hi)}" target="_blank" rel="noopener">واتساب</a><a class="btn line sm" href="tel:+${n}">اتصال</a>`;
+    const hi = fill(col === "requests" ? (TPL.customer || TPL_DEF.customer) : (TPL.join || TPL_DEF.join), { "الاسم": d.name || "", "الكتاب": d.book || "", "الوكالة": agency(), "الخدمات": [...(d.services || []).map(x => x.s), ...(d.picks || [])].join("، ") });
+    out += `<button class="btn sm" type="button" data-wa="${n}" data-wato="${esc(d.name || "")}" data-wam="${esc(hi)}">واتساب</button>`;
   }
   if (d.email) out += `<a class="btn line sm" href="mailto:${esc(d.email)}">بريد</a>`;
   return out;
@@ -746,7 +756,36 @@ function closeModal() { $("modal").hidden = true; $("modal-frame").src = "about:
 $("modal-close").addEventListener("click", closeModal);
 $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
 
+/* =============== WhatsApp: confirm and edit before opening =============== */
+const waDlg = $("wa-dlg");
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-wa]"); if (!b) return;
+  e.preventDefault();
+  waDlg.dataset.n = b.dataset.wa; $("wa-dlg-to").textContent = "إلى: " + (b.dataset.wato || "") + " (" + b.dataset.wa + ")"; $("wa-dlg-msg").value = b.dataset.wam || "";
+  waDlg.showModal(); $("wa-dlg-msg").focus();
+});
+$("wa-dlg-go").addEventListener("click", (e) => {
+  e.preventDefault();
+  window.open("https://wa.me/" + waDlg.dataset.n + "?text=" + encodeURIComponent($("wa-dlg-msg").value), "_blank", "noopener");
+  waDlg.close(); toast("انفتح الواتساب والرسالة جاهزة. اضغطي إرسال فيه.");
+});
+$("wa-dlg-no").addEventListener("click", () => waDlg.close());
+
 /* =============== settings =============== */
+async function renderTpl() {
+  try { await loadExec(true); } catch { return; }
+  ["customer", "join", "exec"].forEach(k => { $("tpl-" + k).value = TPL[k] || TPL_DEF[k]; });
+}
+$("tpl-save").addEventListener("click", async () => {
+  const m = $("tpl-msg"), tpl = {}; ["customer", "join", "exec"].forEach(k => { tpl[k] = $("tpl-" + k).value.trim().slice(0, 1500) || TPL_DEF[k]; });
+  $("tpl-save").disabled = true; m.textContent = "";
+  try { await F.setDoc(EXEC_DOC(), { tpl, updatedAt: F.serverTimestamp() }, { merge: true }); TPL = tpl; m.className = "saved"; m.textContent = "انحفظ."; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { $("tpl-save").disabled = false; }
+});
+$("tpl-reset").addEventListener("click", (e) => {
+  if (!arm(e.currentTarget, "اضغطي مرة ثانية: ترجع الرسائل للنص الأصلي (ما تنحفظ إلا لما تضغطين حفظ).")) return;
+  ["customer", "join", "exec"].forEach(k => { $("tpl-" + k).value = TPL_DEF[k]; });
+});
 let TEAM = [];
 const teamRow = (p) => `<div class="exrow team" data-pid="${esc(p.id)}">
   <input data-t="name" aria-label="الاسم" placeholder="الاسم" value="${esc(p.name || "")}">
