@@ -72,7 +72,7 @@ function route() {
   $("frame").classList.toggle("wide", v === "home" || v === "form");
   if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
   if (v === "history") loadHistory();
-  if (v === "settings") { renderTeam(); renderTpl(); }
+  if (v === "settings") { renderTeam(); renderTpl(); loadAgr(); }
 }
 window.addEventListener("hashchange", route);
 
@@ -375,6 +375,24 @@ function homeRefs(H, fn) {
     if (s.type === "campaigns") ["a", "b"].forEach(k => (s.data[k] || []).forEach(c => fn(c, "pick", "picks")));
     if (s.type === "band") { fn(s.data, "pick", "picks"); fn(s.data, "who", "who"); }
   });
+}
+/* campaign cards → the «حملة جاهزة» options of the order form (linked by the card's cid). Returns true if something changed. */
+function syncPkg(H, Rq) {
+  const f = reqFields(Rq).find(x => x.key === "pkg"); if (!f || !Array.isArray(f.options)) return false;
+  const sec = ((H && H.sections) || []).find(s => s.type === "campaigns"); if (!sec) return false;
+  const before = JSON.stringify(f.options), live = new Set();
+  [["a", false], ["b", true]].forEach(([k, pub]) => (sec.data[k] || []).forEach(c => {
+    if (!c || !c.title || !c.cid) return;
+    live.add(c.cid);
+    const sameAud = (t) => pub === /\(دار نشر\)/.test(t);
+    let o = f.options.find(x => x && x.cid === c.cid) || f.options.find(x => x && x.t && !x.cid && !/^#/.test(x.t) && sameAud(x.t) && baseT(x.t) === baseT(c.title));
+    if (!o) { o = { id: uid("o") }; const h = pub ? -1 : f.options.findIndex(x => x && /^#/.test(x.t || "") && /دور|دار/.test(x.t)); if (h >= 0) f.options.splice(h, 0, o); else f.options.push(o); }
+    o.t = c.title + (pub && !/\(.*\)$/.test(c.title) ? " (دار نشر)" : ""); o.cid = c.cid;
+    if (c.hidden) o.hidden = true; else delete o.hidden;
+  }));
+  // options with no card behind them (deleted campaign) are hidden, not deleted: they can come back from «تعديل صفحة الطلبات»
+  f.options.forEach(o => { if (o && o.t && !/^#/.test(o.t) && (!o.cid || !live.has(o.cid))) o.hidden = true; });
+  return JSON.stringify(f.options) !== before;
 }
 async function publish(id, json, note) {
   const batch = F.writeBatch(db);
@@ -715,7 +733,23 @@ $("ed-save").addEventListener("click", async () => {
         if (n && wasClean) { await publish("home", JSON.stringify(H.data), "تحديث أسماء الخيارات تلقائيًا"); extra = " وتحدّث الاسم الجديد في الصفحة الأساسية بعد."; }
         else if (n) { try { localStorage.setItem("waraq-draft-home", JSON.stringify(H.data)); } catch {} extra = " وتحدّث الاسم في الصفحة الأساسية، احفظيها من «تعديل الصفحة الأساسية»."; }
       }
-    } else await publish(E.id, json, $("ed-note").value.trim() || "تعديل");
+    } else {
+      // كل بطاقة حملة جاهزة تاخذ معرّف ثابت (cid) عشان حاسبة الحملات تتبعها لو تغيّر اسمها أو انحذفت
+      if (E.id === "home") { const seen = new Set(); (E.data.sections || []).filter(s => s.type === "campaigns").forEach(s => ["a", "b"].forEach(k => (s.data[k] || []).forEach(c => { if (c && (!c.cid || seen.has(c.cid))) c.cid = uid("k"); if (c) seen.add(c.cid); }))); json = JSON.stringify(E.data); }
+      await publish(E.id, json, $("ed-note").value.trim() || "تعديل");
+      // قائمة «حملة جاهزة» في نموذج الطلب تمشي مع البطاقات: تنضاف، يتغيّر اسمها، أو تنخفي
+      if (E.id === "home") {
+        try { await loadContent("request"); } catch {}
+        const R = ED.request;
+        if (R && R.data) {
+          const wasClean = !isDirty("request");
+          if (syncPkg(E.data, R.data)) {
+            if (wasClean) { await publish("request", JSON.stringify(R.data), "تحديث قائمة الحملات الجاهزة تلقائيًا"); extra = " وتحدّثت قائمة «حملة جاهزة» في نموذج الطلب."; }
+            else { try { localStorage.setItem("waraq-draft-request", JSON.stringify(R.data)); } catch {} extra = " وتحدّثت قائمة «حملة جاهزة» في صفحة الطلبات، احفظيها من «تعديل صفحة الطلبات»."; }
+          }
+        }
+      }
+    }
     $("ed-note").value = ""; toast("انحفظ ونُشر. التعديل ظاهر في الموقع الحين." + extra);
   }
   catch (err) { toast("ما انحفظ: " + (err.code || err.message)); }
@@ -788,6 +822,36 @@ function sendModal() { if (MODAL) $("modal-frame").contentWindow.postMessage({ t
 function closeModal() { $("modal").hidden = true; $("modal-frame").src = "about:blank"; MODAL = null; }
 $("modal-close").addEventListener("click", closeModal);
 $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.currentTarget, "اضغطي مرة ثانية للتأكيد.")) return; restore(MODAL.kind, MODAL.json, "استرجاع نسخة " + when(MODAL.at), e.currentTarget); } });
+
+/* =============== agreement text (used by the campaign calculator: calc/agreement) =============== */
+const AGR_DOC = () => F.doc(db, "calc", "agreement");
+let AGR_LOADED = false;
+async function loadAgr() {
+  const t = $("agr-text"), m = $("agr-msg");
+  $("agr-keys").innerHTML = (window.AGR_KEYS || []).map(([k, l]) => `<button type="button" data-agk="${esc(k)}" title="${esc(l)}">{${esc(k)}}</button>`).join("");
+  if (AGR_LOADED) return;
+  t.disabled = true;
+  try { const s = await F.getDoc(AGR_DOC()); t.value = (s.exists() && (s.data().client || "").trim()) || window.AGR_DEFAULT || ""; AGR_LOADED = true; m.textContent = ""; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما قدرت أحمّل النص: " + (err.code || err.message); }
+  finally { t.disabled = false; }
+}
+$("agr-keys").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-agk]"); if (!b) return; const t = $("agr-text"), ins = "{" + b.dataset.agk + "}";
+  const a = t.selectionStart ?? t.value.length, z = t.selectionEnd ?? a;
+  t.value = t.value.slice(0, a) + ins + t.value.slice(z); t.focus(); t.selectionStart = t.selectionEnd = a + ins.length;
+});
+$("agr-save").addEventListener("click", async (e) => {
+  const b = e.currentTarget, m = $("agr-msg"), v = $("agr-text").value.trim();
+  if (!v) { m.className = "saved err"; m.textContent = "النص فاضي. لو تبين الأصلي اضغطي «رجوع للنص الأصلي»."; return; }
+  b.disabled = true;
+  try { await F.setDoc(AGR_DOC(), { client: v.slice(0, 30000), updatedAt: F.serverTimestamp() }); m.className = "saved"; m.textContent = "انحفظ. الحاسبة بتستخدم النص الجديد."; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); }
+  finally { b.disabled = false; }
+});
+$("agr-reset").addEventListener("click", (e) => {
+  if (!arm(e.currentTarget, "اضغطي مرة ثانية: يرجع النص الأصلي في المربع، وبعدها اضغطي «حفظ».")) return;
+  $("agr-text").value = window.AGR_DEFAULT || ""; $("agr-msg").className = "saved"; $("agr-msg").textContent = "رجع النص الأصلي. اضغطي «حفظ» عشان يتطبّق.";
+});
 
 /* =============== WhatsApp: confirm and edit before opening =============== */
 const waDlg = $("wa-dlg");

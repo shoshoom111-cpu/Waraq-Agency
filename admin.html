@@ -223,6 +223,7 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 }
 @media (min-width:981px){.prev .close{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.agr-keys{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.agr-keys button{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink);padding:2px 9px;cursor:pointer}.agr-keys button:hover{border-color:var(--ink)}.agr-text{font-size:.9rem;line-height:1.8;min-height:420px}
 </style>
 </head>
 <body>
@@ -329,6 +330,13 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="field"><label for="tpl-exec">رسالة المنفذ (تنرسل له الخدمة، وتنرسل بالإيميل بعد)</label><textarea id="tpl-exec" rows="6"></textarea></div>
       <div class="acts"><button class="btn sm" type="button" id="tpl-save">حفظ</button><button class="btn line sm" type="button" id="tpl-reset">رجوع للنص الأصلي</button><span class="saved" id="tpl-msg" aria-live="polite"></span></div>
     </section>
+    <section class="panelbox" aria-labelledby="agr-h">
+      <h2 id="agr-h"><span class="hlx">نص اتفاقية العميل</span></h2>
+      <p class="hint">هذا النص تطلعه حاسبة الحملات لما تضغطين «إنشاء اتفاقية العميل». الكلمات اللي بين { } تتعبّى تلقائيًا من الحاسبة. اضغطي على كلمة تحت عشان تنضاف مكان المؤشر.</p>
+      <div class="agr-keys" id="agr-keys"></div>
+      <div class="field"><label for="agr-text">النص</label><textarea id="agr-text" rows="18" class="agr-text" placeholder="جارٍ التحميل…"></textarea></div>
+      <div class="acts"><button class="btn sm" type="button" id="agr-save">حفظ</button><button class="btn line sm" type="button" id="agr-reset">رجوع للنص الأصلي</button><span class="saved" id="agr-msg" aria-live="polite"></span></div>
+    </section>
     <section class="panelbox" aria-labelledby="ex-h">
       <h2 id="ex-h"><span class="hlx">الفريق</span></h2>
       <p class="hint">الأشخاص اللي تنرسل لهم الخدمات (مصمم، مونتير…). في كل طلب تختارين لكل خدمة مين ينفذها، ولما تضغطين «قبول»: يوصله إيميل تلقائيًا إذا له إيميل، ويطلع لك زر «إرسال بالواتساب» على رقمه.</p>
@@ -357,8 +365,9 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=20261121a"></script>
-<script src="js/content.js?v=20261121a"></script>
-<script type="module" src="js/admin.js?v=20261121a"></script>
+<script src="config.js?v=202611210703"></script>
+<script src="js/content.js?v=202611210703"></script>
+<script src="js/agreement-default.js?v=202611210703"></script>
+<script type="module" src="js/admin.js?v=202611210703"></script>
 </body>
 </html>
