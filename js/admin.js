@@ -95,6 +95,7 @@ let PEOPLE = [], TPL = {};
 const TPL_DEF = {
   customer: "السلام عليكم {الاسم}،\nوصلنا طلبك من موقع {الوكالة}، ونراجعه ونتواصل معك قريب.",
   join: "أهلًا {الاسم}،\nوصلنا طلب انضمامك لشبكة مسوقي {الوكالة}.",
+  joinOk: "أهلًا {الاسم}،\nتم قبولك في شبكة مسوقي {الوكالة}، أهلًا فيك.\n\nرمزك: {الرمز}\nلما تنشر عن كتاب، أرسل روابط النشر من هنا:\n{الرابط}",
   exec: "السلام عليكم {المنفذ}،\nعندنا طلب جديد من {الوكالة}:\n\n{التفاصيل}\n\nللتنسيق تواصل معنا."
 };
 const agency = () => { try { return (JSON.parse(ED.home.pub || "{}").brand || {}).name || "الوكالة"; } catch { return "الوكالة"; } };
@@ -182,6 +183,33 @@ async function approve(d) {
   if (wa) parts.push("اضغطي «إرسال بالواتساب» جنب كل خدمة.");
   toast(parts.join(" "));
 }
+/* قبول طلب انضمام مسوق من هنا: يصير مسوق في لوحة المسوقين (marketers) برمز يرسل فيه روابطه (codes). نفس طريقة لوحة المسوقين. */
+const MK_URL = "https://book-campaigns.web.app/";
+const ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const PNAMES = ["إنستقرام", "تيك توك", "إكس", "سناب شات", "يوتيوب", "فيسبوك", "ثريدز"];
+const cleanH = (h) => String(h || "").trim().replace(/^@/, "").toLowerCase();
+function newCode(ms) { let c; do { c = ""; for (let i = 0; i < 6; i++) c += ALPHA.charAt(Math.floor(Math.random() * ALPHA.length)); } while (ms.some(m => m.code === c)); return c; }
+async function approveJoin(d) {
+  const snap = await F.getDocs(F.collection(db, "marketers"));
+  const ms = snap.docs.map(x => ({ ...x.data(), id: x.id }));
+  const nm = String(d.name || "").trim(), h = String(d.handle || "").trim();
+  const ex = ms.find(m => String(m.name || "").trim() === nm);
+  const notes = ["انضم عبر موقع الوكالة.", d.genre ? "نوع الكتب: " + d.genre : "", d.views ? "متوسط المشاهدات: " + d.views : "", d.price ? "السعر للمقطع: " + d.price + " ريال" : "", d.license ? "رخصة موثوق: " + d.license : ""].filter(Boolean).join("\n");
+  const m = ex ? { ...ex } : { id: "x" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name: nm, phone: d.phone || "", accounts: [], code: newCode(ms), active: true, address: "", iban: "", notes: "" };
+  m.accounts = Array.isArray(m.accounts) ? m.accounts.slice() : [];
+  (d.platforms || []).forEach(p => { if (PNAMES.includes(p) && !m.accounts.some(a => a.p === p && cleanH(a.h) === cleanH(h))) m.accounts.push({ p, h }); });
+  if (!m.phone && d.phone) m.phone = d.phone;
+  m.notes = m.notes ? m.notes + "\n" + notes : notes;
+  const batch = F.writeBatch(db);
+  batch.set(F.doc(db, "marketers", m.id), JSON.parse(JSON.stringify(m)));
+  if (!ex) batch.set(F.doc(db, "codes", m.code), { m: m.id, name: m.name, active: true, bookIds: [], books: [] });
+  batch.update(F.doc(db, "joinRequests", d.id), { state: "approved", marketerId: m.id, code: m.code, handledAt: F.serverTimestamp() });
+  await batch.commit();
+  toast(ex ? `قُبل الطلب. «${m.name}» موجود من قبل في لوحة المسوقين، وانضافت حساباته له.` : `قُبل «${m.name}» وصار مسوق في لوحة المسوقين برمز ${m.code}. أرسلي له رمزه من «رسالة القبول».`);
+}
+function welcomeMsg(d) {
+  return fill(TPL.joinOk || TPL_DEF.joinOk, { "الاسم": d.name || "", "الوكالة": agency(), "الرمز": d.code || "", "الرابط": MK_URL });
+}
 let col = "requests", filter = "all", query = "", openId = null;
 function startRequests() {
   loadExec(); loadContent("home").catch(() => {}); loadContent("request").then(() => { PUBD = pubReq(); if (VIEW === "requests") renderReq(); }).catch(() => {});
@@ -237,8 +265,10 @@ function rows(d) {
 function reqDetail(d) {
   const st = col === "requests" ? eff(d) : d.state;
   const decide = st === "new"
-    ? (col === "joinRequests" ? `<a class="btn sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">الموافقة من لوحة المسوقين</a>` : `<button class="btn sm" type="button" data-accept="${d.id}">قبول</button>`) + `<button class="btn danger sm" type="button" data-reject="${d.id}">رفض</button>`
-    : (d.agencyOk && d.state === "new" ? `<a class="btn line sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">كمّلي في لوحة المسوقين</a>` : "") + `<button class="btn danger sm" type="button" data-del="${d.id}">حذف</button>`;
+    ? (col === "joinRequests" ? `<button class="btn sm" type="button" data-joinok="${d.id}">قبول وإضافته للمسوقين</button>` : `<button class="btn sm" type="button" data-accept="${d.id}">قبول</button>`) + `<button class="btn danger sm" type="button" data-reject="${d.id}">رفض</button>`
+    : (col === "joinRequests" && st === "approved" && waNum(d.phone).length >= 10 ? `<button class="btn sm" type="button" data-wa="${waNum(d.phone)}" data-wato="${esc(d.name || "")}" data-wam="${esc(welcomeMsg(d))}">رسالة القبول بالواتساب</button>` : "") +
+      (col === "joinRequests" && st === "approved" ? `<a class="btn line sm" href="${MK_URL}admin.html" target="_blank" rel="noopener">فتح لوحة المسوقين</a>` : "") +
+      (d.agencyOk && d.state === "new" ? `<a class="btn line sm" href="https://book-campaigns.web.app/admin.html" target="_blank" rel="noopener">كمّلي في لوحة المسوقين</a>` : "") + `<button class="btn danger sm" type="button" data-del="${d.id}">حذف</button>`;
   return `<div class="detail" id="d-${d.id}"><dl><dt>التاريخ</dt><dd class="num">${esc(when(d.createdAt))}</dd><dt>الحالة</dt><dd>${esc(SNAME[st] || st || "")}${d.agencyOk && d.state === "new" ? " · بانتظار لوحة المسوقين" : ""}</dd>
     ${rows(d).map(([l, v]) => `<dt>${esc(l)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <div class="side"><div class="acts">${contactLinks(d)}<button class="btn line sm" type="button" data-copy="${d.id}">نسخ الطلب</button></div>
@@ -273,6 +303,9 @@ $("list").addEventListener("click", async (e) => {
   const ac = e.target.closest("[data-accept]");
   if (ac) { const d = RQ[col].find(x => x.id === ac.dataset.accept); ac.disabled = true;
     try { await approve(d); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } finally { ac.disabled = false; } return; }
+  const jo = e.target.closest("[data-joinok]");
+  if (jo) { const d = RQ.joinRequests.find(x => x.id === jo.dataset.joinok); if (!d) return; jo.disabled = true; jo.textContent = "جارٍ القبول…";
+    try { await approveJoin(d); } catch (err) { toast("ما انقبل: " + (err.code || err.message)); jo.disabled = false; jo.textContent = "قبول وإضافته للمسوقين"; } return; }
   const rs = e.target.closest("[data-resend]");
   if (rs) { const d = RQ[col].find(x => x.id === rs.dataset.resend), r = routesOf(d).find(x => x.name === rs.dataset.svc); if (!r || !r.who || !r.who.email) return;
     rs.disabled = true; const res = await sendExecEmail(r.who.email, d, [r]); rs.disabled = false;
