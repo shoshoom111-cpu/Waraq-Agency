@@ -445,7 +445,7 @@ const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"
 
 const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"],["svclist","خدمات يضيفها العميل (+ أضف خدمة)"]];
 const FTN = Object.fromEntries(FTYPES);
-const CORE_NAMES = { who:"الصفة (كاتب / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
+const CORE_NAMES = { who:"الصفة (مؤلف / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
 const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("agree", "النص تحت زر الإرسال", "area"),
   S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area"), S("afterTitle", "عنوان «بعد ما ترسل الطلب»"),
   L("after", "خطوات «بعد ما ترسل الطلب»", [S("title", "الخطوة", "text", { title: true }), S("text", "الشرح")], { title: "خطوة", text: "" }, "title")];

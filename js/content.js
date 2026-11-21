@@ -23,7 +23,7 @@ var HOME={
     {id:"campaigns",type:"campaigns",nav:"الحملات",toc:"حملات جاهزة",data:{title:"حملات جاهزة",sub:"اختر الأقرب لاحتياجك، ونعدّلها معك حسب كتابك.",
       tabA:"للمؤلفين",tabB:"لدور النشر",button:"اطلب هذه الحملة",
       a:[
-        {label:"لأول تجربة",title:"البداية",text:"لكاتب يجرّب التسويق لأول مرة.",items:"مقاطع من مسوقين مختارين\nتصاميم للنشر\nخطة تسويق مختصرة",pick:"حملة مسوقين",star:false},
+        {label:"لأول تجربة",title:"البداية",text:"لمؤلف يجرّب التسويق لأول مرة.",items:"مقاطع من مسوقين مختارين\nتصاميم للنشر\nخطة تسويق مختصرة",pick:"حملة مسوقين",star:false},
         {label:"قبل الصدور",title:"العدّ التنازلي",text:"تشويق للكتاب قبل نزوله للمكتبات.",items:"مقطع تشويقي ومجسّم الغلاف\nمقاطع من مسوقين\nمسابقة على نسخ من الكتاب",pick:"حملة مسوقين",star:false},
         {label:"الأكثر طلبًا",title:"الإطلاق",text:"حملة متكاملة عند صدور الكتاب.",items:"مقاطع من مسوقين على أكثر من منصة\nمقطع تشويقي وتصاميم\nإعلان ممول\nتقرير بروابط كل منشور",pick:"حملة متكاملة",star:true},
         {label:"لكتاب صدر سابقًا",title:"الاقتباسات",text:"دفعة جديدة لكتاب يستحق قرّاء أكثر.",items:"بطاقات اقتباس من الكتاب\nمقاطع من مسوقين",pick:"حملة مسوقين",star:false},
@@ -72,8 +72,8 @@ var REQUEST={
   after:[{title:"نراجع طلبك",text:"نقرأ تفاصيل الكتاب والخدمة اللي تحتاجها."},{title:"نتواصل معك",text:"على الواتساب، ونرسل لك عرض سعر واضح."},{title:"نتفق ونبدأ",text:"اتفاق مكتوب بالمطلوب والمدة، ثم نبدأ الحملة."}],
   parts:[
     {id:"p1",title:"عنك",fields:[
-      {id:"f-who",key:"who",type:"radio",label:"أنت",options:"كاتب\nدار نشر",required:true,width:"full"},
-      {id:"f-name",key:"name",type:"text",label:"اسم الكاتب",altLabel:"اسم دار النشر",required:true,width:"full"}]},
+      {id:"f-who",key:"who",type:"radio",label:"أنت",options:"مؤلف\nدار نشر",required:true,width:"full"},
+      {id:"f-name",key:"name",type:"text",label:"اسم المؤلف",altLabel:"اسم دار النشر",required:true,width:"full"}]},
     {id:"p2",title:"كتابك",fields:[
       {id:"f-book",key:"book",type:"text",label:"عنوان الكتاب",required:true,width:"full",hint:""},
       {id:"f-genre",key:"genre",type:"text",label:"نوع الكتاب",placeholder:"رواية، تطوير ذات، أطفال…",options:"رواية\nقصص قصيرة\nشعر\nتطوير ذات\nفكر وفلسفة\nتاريخ\nدين\nأطفال\nسيرة ذاتية\nعلمي",width:"half"},
@@ -103,7 +103,7 @@ function normRequest(r){(r.parts||[]).forEach(function(p){(p.fields||[]).forEach
 normRequest(REQUEST);
 REQUEST.parts.forEach(function(p){p.fields.forEach(function(f){if(f.key==="picks")f.options.forEach(function(o){if(o.t==="حملة مسوقين")o.dash=true})})});
 
-/* الحقول الأساسية: تنحفظ باسمها في الطلب وتستخدمها اللوحة (الموافقة تضيف الكاتب والكتاب) */
+/* الحقول الأساسية: تنحفظ باسمها في الطلب وتستخدمها اللوحة (الموافقة تضيف المؤلف والكتاب) */
 var CORE={who:"radio",name:"text",book:"text",genre:"text",date:"text",status:"radio",where:"text",link:"url",picks:"checks",pkg:"select",budget:"select",notes:"textarea",phone:"tel",email:"email"};
 var LOCKED={name:1,phone:1};
 

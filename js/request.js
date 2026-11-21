@@ -103,7 +103,7 @@ function render(r){
   $("after").hidden=!vis(R.after).length&&!R.afterTitle;
   $("ok-title").textContent=R.okTitle||"وصلنا طلبك";
   $("wa").hidden=!hasWA;
-  initRows(); prefill(); syncWho(); applyWhen();
+  initRows(); prefill(); syncWho(); syncPkgAud(); applyWhen();
   document.body.classList.remove("loading");
 }
 
@@ -116,7 +116,27 @@ function syncWho(){
   var req=name.required||locked(name);
   l.innerHTML=esc(c&&c.value!==first?name.altLabel:name.label)+(req?'':' <small>(اختياري)</small>')+(name.hint?' <small>('+esc(name.hint)+')</small>':'');
 }
-document.addEventListener("change",function(e){if(e.target.name&&fieldBy("who")&&e.target.name==="q-"+fieldBy("who").id)syncWho()});
+/* قائمة «حملة جاهزة» تعرض حملات المؤلفين أو دور النشر حسب «أنت». المجموعة تنعرف من عنوانها (# لدور النشر) أو من «(دار نشر)» في الاسم */
+var PUB_RE=/دار|دور|نشر/;
+function syncPkgAud(){
+  var who=fieldBy("who"), pkg=fieldBy("pkg"); if(!who||!pkg||pkg.type!=="select")return;
+  var sel=$("q-"+pkg.id); if(!sel)return;
+  if(!sel._all){var all=[];each(sel.children,function(n){
+      if(n.tagName==="OPTGROUP"){var a=PUB_RE.test(n.label)?"pub":"author";each(n.children,function(o){all.push({t:o.value,g:n.label,aud:a})})}
+      else if(n.value)all.push({t:n.value,g:"",aud:/\(دار نشر\)/.test(n.value)?"pub":""});
+    });sel._all=all}
+  var c=document.querySelector('input[name="q-'+who.id+'"]:checked'), first=choices(who.options)[0];
+  var aud=!c?"":c.value===first?"author":"pub", cur=sel.value, html='<option value="">ما حددت</option>', g=null;
+  sel._all.forEach(function(o){
+    if(aud&&o.aud&&o.aud!==aud)return;
+    if(!aud&&o.g!==g){if(g)html+='</optgroup>';if(o.g)html+='<optgroup label="'+esc(o.g)+'">';g=o.g}
+    html+='<option>'+esc(o.t)+'</option>';
+  });
+  if(!aud&&g)html+='</optgroup>';
+  sel.innerHTML=html;
+  sel.value=sel._all.some(function(o){return o.t===cur&&!(aud&&o.aud&&o.aud!==aud)})?cur:"";
+}
+document.addEventListener("change",function(e){if(e.target.name&&fieldBy("who")&&e.target.name==="q-"+fieldBy("who").id){syncWho();syncPkgAud()}});
 function prefill(){
   var q=new URLSearchParams(location.search);
   [["who","who"],["pick","picks"],["pkg","pkg"]].forEach(function(x){
@@ -349,7 +369,7 @@ $("form").addEventListener("submit",function(e){
       var denied=err&&err.code==="permission-denied";
       show(false,data,"",lines,denied?"ما قدرنا نحفظ الطلب لأن فيه بيانات غير مقبولة (مثلًا نص طويل جدًا). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.":"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
-$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});each(document.querySelectorAll("label.custom,.cdesc"),function(x){x.remove()});each(document.querySelectorAll(".morebox"),function(b){b.hidden=true});each(document.querySelectorAll("[data-more]"),function(b){b.setAttribute("aria-expanded","false")});initRows();prefill();syncWho();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
+$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});each(document.querySelectorAll("label.custom,.cdesc"),function(x){x.remove()});each(document.querySelectorAll(".morebox"),function(b){b.hidden=true});each(document.querySelectorAll("[data-more]"),function(b){b.setAttribute("aria-expanded","false")});initRows();prefill();syncWho();syncPkgAud();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
   var ta=$("text");
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}

@@ -45,8 +45,9 @@ var R={
     var d=s.data, A=vis(d.a), B=vis(d.b), two=A.length&&B.length, pubWho=whoPublisher();
     function card(c,pub){
       var href=reqLink({pick:c.pick,pkg:c.title+(pub&&!/\(.*\)$/.test(c.title)?" (دار نشر)":""),who:pub?pubWho:""});
-      var more=(c.text?'<p>'+esc(c.text)+'</p>':'')+(lines(c.items).length?'<ul>'+lines(c.items).map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'');
-      return '<article class="card'+(c.star?' star':'')+'">'+(c.label?'<span class="lbl">'+esc(c.label)+'</span>':'')+'<h3>'+esc(c.title)+'</h3>'+
+      // الوصف ظاهر تحت اسم الحملة، و«التفاصيل» فيها المميزات بس
+      var more=lines(c.items).length?'<ul>'+lines(c.items).map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'';
+      return '<article class="card'+(c.star?' star':'')+'">'+(c.label?'<span class="lbl">'+esc(c.label)+'</span>':'')+'<h3>'+esc(c.title)+'</h3>'+(c.text?'<p class="desc">'+esc(c.text)+'</p>':'')+
         (more?'<details class="more"><summary aria-label="'+esc((d.more||"التفاصيل")+": "+c.title)+'">'+esc(d.more||"التفاصيل")+CHEV+'</summary>'+more+'</details>':'')+'<span class="grow"></span>'+
         '<a class="btn'+(c.star?'':' line')+'" href="'+esc(href)+'" aria-label="'+esc((d.button||"اطلب هذه الحملة")+": "+c.title)+'">'+esc(d.button||"اطلب هذه الحملة")+'</a></article>';
     }
