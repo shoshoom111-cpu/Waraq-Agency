@@ -38,7 +38,7 @@ var R={
     return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],s.data)+'<ol class="svc">'+items.map(function(it,k){
       var tg=tags(it.tags);
       var body=(it.text?'<p>'+esc(it.text)+'</p>':'')+(tg.length?'<div class="tags">'+tg.map(function(t){return '<span>'+esc(t)+'</span>'}).join("")+'</div>':'');
-      return '<li><details><summary><span class="n">'+ar(k+1)+'</span><h3>'+esc(it.title)+'</h3>'+(body?CHEV:'')+'</summary>'+(body?'<div class="svc-b">'+body+'</div>':'')+'</details></li>';
+      return '<li><details><summary><h3>'+esc(it.title)+'</h3>'+(body?CHEV:'')+'</summary>'+(body?'<div class="svc-b">'+body+'</div>':'')+'</details></li>';
     }).join("")+'</ol></section></div>';
   },
   campaigns:function(s,i,ctx){

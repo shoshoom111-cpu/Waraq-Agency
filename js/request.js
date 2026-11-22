@@ -66,6 +66,12 @@ function fieldHTML(f,pi){
     var list=choices(f.options);
     h+='<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks'+(f.key==="who"?" big":"")+'" id="'+id+'" role="'+(f.type==="radio"?"radiogroup":"group")+'" aria-labelledby="'+id+'-l">'+
       list.map(function(o,k){return '<label><input type="'+(f.type==="radio"?"radio":"checkbox")+'" name="'+id+'" value="'+esc(o)+'"'+(f.type==="radio"&&f.key==="who"&&k===0?" checked":"")+'>'+esc(o)+'</label>'}).join("")+'</div>';
+  }else if(f.type==="select"&&f.key==="pkg"){
+    var body2="";
+    opts(f.options).forEach(function(o){if(o.charAt(0)!=="#")body2+='<option>'+esc(o)+'</option>'});
+    h='<div class="f full" data-field="'+esc(f.id)+'" data-part="'+pi+'">';
+    h+='<span class="lab" id="'+id+'-l">'+lab+'</span><div class="picks pkgpicks" id="'+id+'-chips" role="radiogroup" aria-labelledby="'+id+'-l"></div>'+
+      '<select id="'+id+'" hidden aria-hidden="true" tabindex="-1"><option value="">ما حددت</option>'+body2+'</select>';
   }else if(f.type==="select"){
     var groups=opts(f.options), body="", open=false;
     groups.forEach(function(o){
@@ -93,8 +99,11 @@ function render(r){
   $("intro").innerHTML='<h1>'+esc(R.title)+(R.highlight?' <span class="hl">'+esc(R.highlight)+'</span>':'')+'</h1>'+(R.intro?'<p>'+esc(R.intro)+'</p>':'');
   $("parts").innerHTML=parts.map(function(p){
     var fs=vis(p.fields); if(!fs.length)return "";
+    var pk=fs.filter(function(f){return f.key==="pkg"})[0], at=-1;
+    fs.forEach(function(f,k){if(f.key==="picks"&&at<0)at=k});
+    if(pk&&at>-1&&fs.indexOf(pk)>at){fs=fs.filter(function(f){return f!==pk});fs.splice(at,0,pk)}
     var pi=R.parts.indexOf(p);
-    return '<fieldset class="part" data-part="'+pi+'"><legend><b>'+ar(++n)+'</b><span>'+esc(p.title)+'</span></legend><div class="grid">'+expand(fs).map(function(f){return fieldHTML(f,pi)}).join("")+'</div></fieldset>';
+    return '<fieldset class="part" data-part="'+pi+'"><legend><span>'+esc(p.title)+'</span></legend><div class="grid">'+expand(fs).map(function(f){return fieldHTML(f,pi)}).join("")+'</div></fieldset>';
   }).join("");
   $("go").querySelector(".t").textContent=R.submit||"أرسل الطلب";$("go").dataset.label=R.submit||"أرسل الطلب";
   $("agree").textContent=R.agree||"";
@@ -123,7 +132,7 @@ function syncPkgAud(){
   var sel=$("q-"+pkg.id); if(!sel)return;
   if(!sel._all){var all=[];each(sel.children,function(n){
       if(n.tagName==="OPTGROUP"){var a=PUB_RE.test(n.label)?"pub":"author";each(n.children,function(o){all.push({t:o.value,g:n.label,aud:a})})}
-      else if(n.value)all.push({t:n.value,g:"",aud:/\(دار نشر\)/.test(n.value)?"pub":""});
+      else if(n.value)all.push({t:n.value,g:"",aud:/\(دار نشر\)/.test(n.value)?"pub":(pkg.key==="pkg"&&$("q-"+pkg.id+"-chips")?"author":"")});
     });sel._all=all}
   var c=document.querySelector('input[name="q-'+who.id+'"]:checked'), first=choices(who.options)[0];
   var aud=!c?"":c.value===first?"author":"pub", cur=sel.value, html='<option value="">ما حددت</option>', g=null;
@@ -135,7 +144,21 @@ function syncPkgAud(){
   if(!aud&&g)html+='</optgroup>';
   sel.innerHTML=html;
   sel.value=sel._all.some(function(o){return o.t===cur&&!(aud&&o.aud&&o.aud!==aud)})?cur:"";
+  drawPkgChips(pkg);
 }
+function drawPkgChips(pkg){
+  var box=$("q-"+pkg.id+"-chips"), sel=$("q-"+pkg.id); if(!box||!sel)return;
+  box.innerHTML=Array.prototype.filter.call(sel.options,function(o){return o.value}).map(function(o){
+    return '<label><input type="radio" name="q-'+pkg.id+'-chip" value="'+esc(o.value)+'"'+(o.value===sel.value?' checked data-was="1"':'')+'>'+esc(o.value.replace(/\s*\(دار نشر\)\s*$/,""))+'</label>';
+  }).join("");
+  box.closest("[data-field]").hidden=!sel.options.length||sel.options.length<2;
+}
+document.addEventListener("click",function(e){
+  var inp=e.target.closest&&e.target.closest(".pkgpicks input"); if(!inp)return;
+  var pkg=fieldBy("pkg"), sel=pkg&&$("q-"+pkg.id); if(!sel)return;
+  if(inp.dataset.was==="1"){inp.checked=false;sel.value=""}else sel.value=inp.value;
+  each(document.querySelectorAll(".pkgpicks input"),function(x){x.dataset.was=x.checked?"1":""});
+});
 document.addEventListener("change",function(e){if(e.target.name&&fieldBy("who")&&e.target.name==="q-"+fieldBy("who").id){syncWho();syncPkgAud()}});
 function prefill(){
   var q=new URLSearchParams(location.search);
