@@ -118,6 +118,8 @@ summary:hover .chev{stroke:var(--ink)}
 .aud button:hover{background:rgba(255,216,74,.45)}
 .aud button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
 .pk{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.svc-cta{display:flex;justify-content:center;margin-top:28px}
+.svc-cards .card .desc{margin-top:-6px}
 .card{position:relative;background:var(--sheet);border:1.5px solid var(--rule);padding:24px 22px 22px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s,box-shadow .3s var(--ease),transform .3s var(--ease)}
 .card:hover{border-color:var(--ink);box-shadow:var(--lift);transform:translateY(-3px)}
 .card.star{border:2px solid var(--ink);background:linear-gradient(var(--mark),var(--mark)) top/100% 7px no-repeat,var(--sheet);padding-top:28px}
@@ -265,7 +267,7 @@ body.loading #site{visibility:hidden}
   .req form{grid-template-columns:1fr}
   section{padding:60px 0}
 }
-@media (max-width:700px){
+@media (max-width:1000px){
   .mast{flex-wrap:wrap;padding:10px 0 0;border-bottom:0}
   .mast nav{order:3;width:100%;overflow-x:auto;scrollbar-width:none;gap:18px;padding:6px 0 8px;border-top:1px solid var(--rule);border-bottom:2px solid var(--ink)}
   .mast nav::-webkit-scrollbar{display:none}
@@ -290,8 +292,8 @@ body.loading #site{visibility:hidden}
 <body class="loading">
 <div id="site"></div>
 <noscript><div class="wrap" style="padding:40px 0"><h1>وكالة رحلة ورق</h1><p>تسويق متخصص للمؤلفين ودور النشر. <a href="request.html">اطلب خدمة</a></p></div></noscript>
-<script src="config.js?v=202611221233"></script>
-<script src="js/content.js?v=202611221233"></script>
-<script src="js/home.js?v=202611221233"></script>
+<script src="config.js?v=202611221253"></script>
+<script src="js/content.js?v=202611221253"></script>
+<script src="js/home.js?v=202611221253"></script>
 </body>
 </html>

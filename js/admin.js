@@ -413,7 +413,7 @@ const L = (k, l, item, tpl, tk) => S(k, l, "list", { item, tpl, tk });
 const TYPES = {
   hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta1", "زر الطلب"), S("cta2", "الزر الثاني (يودّي للحملات)"),
       L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text")] },
-  services: { name: "الخدمات", fields: [TITLE, SUB, L("items", "الخدمات", [S("title", "اسم الخدمة", "text", { title: true }), S("text", "الوصف", "area"), S("tags", "الوسوم", "text", { hint: "افصلي بينها بفاصلة ،" })], { title: "خدمة جديدة", text: "", tags: "" }, "title")],
+  services: { name: "الخدمات", fields: [TITLE, SUB, S("button", "زر الطلب تحت الخدمات", "text", { hint: "فاضي = «اطلب خدمة»" }), L("items", "الخدمات", [S("title", "اسم الخدمة", "text", { title: true }), S("text", "الوصف", "area"), S("tags", "الوسوم", "text", { hint: "افصلي بينها بفاصلة ،" })], { title: "خدمة جديدة", text: "", tags: "" }, "title")],
     make: () => ({ title: "خدماتنا", sub: "", items: [{ title: "خدمة جديدة", text: "", tags: "" }] }) },
   campaigns: { name: "الحملات الجاهزة", unique: true, fields: [TITLE, SUB, S("tabA", "اسم التبويب الأول"), S("tabB", "اسم التبويب الثاني"), S("button", "نص زر الحملة"), S("more", "نص زر التفاصيل في البطاقة", "text", { hint: "فاضي = «التفاصيل»" }),
       L("a", "حملات التبويب الأول", null, null, "title"), L("b", "حملات التبويب الثاني", null, null, "title")],

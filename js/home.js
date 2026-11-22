@@ -33,13 +33,15 @@ var R={
       (vis(d.bullets).length?'<ul class="for">'+vis(d.bullets).map(function(b){return '<li>'+esc(b.text)+'</li>'}).join("")+'</ul>':'')+
       '</div></div></div>';
   },
+  /* الخدمات بنفس شكل بطاقات الحملات: الاسم والوصف ظاهرين، والوسوم مربعات تحتها، وزر طلب واحد تحت البطاقات */
   services:function(s,i,ctx){
-    var items=vis(s.data.items);
-    return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],s.data)+'<ol class="svc">'+items.map(function(it,k){
+    var d=s.data, items=vis(d.items);
+    return '<div class="wrap" data-sec="'+i+'"><section id="'+esc(s.id)+'">'+head(ctx.folio[s.id],d)+'<div class="pk svc-cards">'+items.map(function(it){
       var tg=tags(it.tags);
-      var body=(it.text?'<p>'+esc(it.text)+'</p>':'')+(tg.length?'<div class="tags">'+tg.map(function(t){return '<span>'+esc(t)+'</span>'}).join("")+'</div>':'');
-      return '<li><details><summary><h3>'+esc(it.title)+'</h3>'+(body?CHEV:'')+'</summary>'+(body?'<div class="svc-b">'+body+'</div>':'')+'</details></li>';
-    }).join("")+'</ol></section></div>';
+      return '<article class="card"><h3>'+esc(it.title)+'</h3>'+(it.text?'<p class="desc">'+esc(it.text)+'</p>':'')+
+        (tg.length?'<div class="tags">'+tg.map(function(t){return '<span>'+esc(t)+'</span>'}).join("")+'</div>':'')+'</article>';
+    }).join("")+'</div>'+
+    '<div class="svc-cta"><a class="btn" href="request.html">'+esc(d.button||"اطلب خدمة")+'</a></div></section></div>';
   },
   campaigns:function(s,i,ctx){
     var d=s.data, A=vis(d.a), B=vis(d.b), two=A.length&&B.length, pubWho=whoPublisher();
