@@ -19,7 +19,7 @@ function wa(text){return "https://wa.me/"+WA+"?text="+encodeURIComponent(text)}
 function reqLink(q){var p=new URLSearchParams();Object.keys(q).forEach(function(k){if(q[k])p.set(k,q[k])});var s=p.toString();return "request.html"+(s?"?"+s:"")}
 function safeUrl(u){u=String(u||"").trim();return /^(https?:|mailto:|tel:|#|\/|[\w.\-]+\.html)/i.test(u)?u:"#"}
 function socials(){return '<span class="soc">'+vis(C.brand.socials).filter(function(s){return s.url}).map(function(s){return '<a href="'+esc(safeUrl(s.url))+'" target="_blank" rel="noopener">'+esc(s.name)+'</a>'}).join("")+'</span>'}
-function head(n,d){return '<div class="head"><span class="folio">ص '+ar(n)+'</span><h2>'+esc(d.title)+'</h2>'+(d.sub?'<p>'+esc(d.sub)+'</p>':'')+'</div>'}
+function head(n,d){return '<div class="head"><h2>'+esc(d.title)+'</h2>'+(d.sub?'<p>'+esc(d.sub)+'</p>':'')+'</div>'}
 function anchor(s){return s.type==="request"?"request.html":"#"+s.id}
 
 /* ---------- sections ---------- */
