@@ -58,6 +58,7 @@ A.onAuthStateChanged(auth, (user) => {
   $("me").hidden = !user;
   if (!user) { gate("g-login"); return; }
   GATES.forEach(g => $(g).hidden = true); $("appnav").hidden = false;
+  try { localStorage.setItem("waraq-staff", "1"); } catch (e) {}
   startRequests(); loadSettings(); route();
 });
 
@@ -226,11 +227,85 @@ function startRequests() {
       RQL[c] = true; if (c === col) reqEmpty("تعذّر تحميل الطلبات", err.code || err.message);
     }));
   });
+  startExtra();
+}
+
+/* =============== الطلبات غير المكتملة والزوار =============== */
+const EX = { drafts: [], visits: [], dl: false, vl: false, derr: "", verr: "" };
+const DAY = 864e5, ago = (ms) => new Date(Date.now() - ms);
+const tsd = (t) => t && t.toDate ? t.toDate() : null;
+function startExtra() {
+  unsubs.push(F.onSnapshot(F.query(F.collection(db, "drafts"), F.orderBy("at", "desc"), F.limit(500)), (snap) => {
+    EX.drafts = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })); EX.dl = true; EX.derr = "";
+    const old = EX.drafts.filter(d => tsd(d.at) && tsd(d.at) < ago(30 * DAY));   // ننظف بعد ٣٠ يوم، مثل ما في سياسة الخصوصية
+    old.forEach(d => F.deleteDoc(F.doc(db, "drafts", d.id)).catch(() => {}));
+    const n = openDrafts().length; document.querySelector('[data-count="drafts"]').textContent = toAr(n);
+    if (col === "drafts" || col === "visits") renderReq();
+  }, (err) => { EX.dl = true; EX.derr = err.code || err.message; if (col === "drafts") renderReq(); }));
+  unsubs.push(F.onSnapshot(F.query(F.collection(db, "visits"), F.where("at", ">=", F.Timestamp.fromDate(ago(30 * DAY))), F.orderBy("at", "desc"), F.limit(10000)), (snap) => {
+    EX.visits = snap.docs.map(d => d.data({ serverTimestamps: "estimate" })); EX.vl = true; EX.verr = "";
+    if (col === "visits") renderReq();
+  }, (err) => { EX.vl = true; EX.verr = err.code || err.message; if (col === "visits") renderReq(); }));
+}
+/* غير مكتمل = ما انرسل، وآخر كتابة فيه قبل ١٠ دقايق على الأقل (عشان ما يطلع اللي يعبّي الحين) */
+const openDrafts = () => EX.drafts.filter(d => !d.done && tsd(d.at) && tsd(d.at) < ago(10 * 60e3));
+const since = (d) => { if (!d) return ""; const m = Math.round((Date.now() - d) / 60e3); return m < 60 ? "قبل " + m + " دقيقة" : m < 1440 ? "قبل " + Math.round(m / 60) + " ساعة" : "قبل " + Math.round(m / 1440) + " يوم"; };
+function renderDrafts() {
+  $("chips").innerHTML = ""; $("loading").hidden = EX.dl; if (!EX.dl) { $("list").innerHTML = ""; $("empty").hidden = true; return; }
+  if (EX.derr) return reqEmpty("تعذّر تحميل الطلبات غير المكتملة", EX.derr);
+  const all = openDrafts().filter(d => !query || JSON.stringify(Object.values(d)).toLowerCase().includes(query));
+  if (!all.length) return reqEmpty("ما فيه طلبات غير مكتملة", "لما أحد يكتب اسمه أو جواله في نموذج الطلب وما يرسله، يظهر هنا بعد ١٠ دقايق، عشان تتواصلين معه.");
+  $("empty").hidden = true;
+  $("list").innerHTML = all.map(d => {
+    const n = waNum(d.phone), open = openId === d.id;
+    const hi = "السلام عليكم" + (d.name ? " " + d.name : "") + "، معك " + agency() + ". لاحظنا إنك بديت طلب خدمة" + (d.book ? " لكتاب «" + d.book + "»" : "") + " وما اكتمل. نقدر نساعدك تكمله أو نجاوب على أي سؤال؟";
+    const det = open ? `<div class="detail" id="d-${d.id}"><dl>
+      <dt>آخر كتابة</dt><dd class="num">${esc(when(d.at))} (${esc(since(tsd(d.at)))})</dd>
+      ${d.who ? `<dt>الصفة</dt><dd>${esc(d.who)}</dd>` : ""}${d.phone ? `<dt>الجوال</dt><dd class="num">${esc(d.phone)}</dd>` : ""}${d.email ? `<dt>البريد</dt><dd>${esc(d.email)}</dd>` : ""}
+      ${d.book ? `<dt>الكتاب</dt><dd>${esc(d.book)}</dd>` : ""}${d.pkg ? `<dt>الحملة الجاهزة</dt><dd>${esc(d.pkg)}</dd>` : ""}${d.services ? `<dt>الخدمات</dt><dd>${esc(d.services)}</dd>` : ""}${d.budget ? `<dt>الميزانية</dt><dd>${esc(d.budget)}</dd>` : ""}
+      <dt>جاء من</dt><dd>${esc(srcName(d.src))} · ${d.device === "mobile" ? "جوال" : "كمبيوتر"}</dd></dl>
+      <div class="acts">${n.length >= 10 ? `<button class="btn sm" type="button" data-wa="${n}" data-wato="${esc(d.name || "")}" data-wam="${esc(hi)}">راسليه بالواتساب</button><a class="btn line sm" href="tel:+${n}">اتصال</a>` : ""}
+      <button class="btn danger sm" type="button" data-ddel="${d.id}">حذف</button></div></div>` : "";
+    return `<li class="item${open ? " open" : ""}"><button class="row" type="button" data-open="${d.id}" aria-expanded="${open}" aria-controls="d-${d.id}">
+      <span class="nm">${esc(d.name || d.phone || "بدون اسم")}</span><span class="sm">${esc([d.book && "«" + d.book + "»", d.services || d.pkg, (d.filled || 0) + " خانات معبّاة"].filter(Boolean).join(" · "))}</span><span class="pill" data-s="new">غير مكتمل</span><span class="dt num">${esc(since(tsd(d.at)))}</span>
+    </button>${det}</li>`;
+  }).join("");
+}
+const SRC = { direct: "مباشر (رابط محفوظ أو مكتوب)", "google.com": "قوقل", "google.com.sa": "قوقل", "bing.com": "بينق", "t.co": "إكس (تويتر)", "x.com": "إكس (تويتر)", "instagram.com": "انستقرام", "l.instagram.com": "انستقرام", "facebook.com": "فيسبوك", "m.facebook.com": "فيسبوك", "l.facebook.com": "فيسبوك", "tiktok.com": "تيك توك", "snapchat.com": "سناب شات", "linkedin.com": "لينكدإن", "youtube.com": "يوتيوب", "waraqmagazine.com": "مجلة ورق", "book-campaigns.web.app": "لوحة المسوقين" };
+const srcName = (s) => SRC[s] || (/google\./.test(s || "") ? "قوقل" : s || "غير معروف");
+function renderVisits() {
+  $("chips").innerHTML = ""; $("loading").hidden = EX.vl; $("empty").hidden = true; if (!EX.vl) { $("list").innerHTML = ""; return; }
+  if (EX.verr) return reqEmpty("تعذّر تحميل الزوار", EX.verr);
+  const V = EX.visits.filter(v => tsd(v.at)), day = (d) => d.toISOString().slice(0, 10), today = day(new Date());
+  const uniq = (list) => new Set(list.map(v => v.visitor)).size;
+  const inDays = (n) => V.filter(v => tsd(v.at) >= ago(n * DAY));
+  const t1 = V.filter(v => day(tsd(v.at)) === today), reqPage = V.filter(v => v.page === "request");
+  const sent = RQ.requests.filter(d => tsd(d.createdAt) && tsd(d.createdAt) >= ago(30 * DAY) && d.source !== "dash").length;
+  const started = EX.drafts.filter(d => tsd(d.startedAt || d.at) && tsd(d.startedAt || d.at) >= ago(30 * DAY)).length;
+  const u30 = uniq(V), pct = (a, b) => b ? Math.round(a * 100 / b) + "٪" : "—";
+  const byDay = {}; V.forEach(v => { const k = day(tsd(v.at)); (byDay[k] = byDay[k] || new Set()).add(v.visitor); });
+  const days = []; for (let i = 29; i >= 0; i--) { const k = day(ago(i * DAY)); days.push([k, byDay[k] ? byDay[k].size : 0]); }
+  const max = Math.max(1, ...days.map(x => x[1]));
+  const firstSeen = {}; V.forEach(v => { if (!firstSeen[v.visitor] || tsd(v.at) < firstSeen[v.visitor].t) firstSeen[v.visitor] = { t: tsd(v.at), v }; });
+  const count = (list, key) => { const m = {}; list.forEach(x => { const k = key(x); m[k] = (m[k] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+  const bars = (rows, name) => { const tot = rows.reduce((s, r) => s + r[1], 0) || 1; return rows.slice(0, 8).map(([k, n]) => `<div class="vbar"><span>${esc(name(k))}</span><u style="width:${Math.max(3, Math.round(n * 100 / tot))}%"></u><span class="n num">${toAr(n)}</span></div>`).join("") || '<p class="dmeta">ما فيه بيانات بعد.</p>'; };
+  const firsts = Object.values(firstSeen).map(x => x.v);
+  const stat = (n, l, s) => `<div class="vstat"><b class="num">${n}</b><span>${l}</span>${s ? `<small>${s}</small>` : ""}</div>`;
+  $("list").innerHTML = `<li style="list-style:none">
+    <p class="vnote">الأرقام للزوار الحقيقيين في آخر ٣٠ يوم: كل متصفح ينحسب زائر واحد مهما فتح صفحات. ما ننحسب برامج البحث ومعاينات الروابط، ولا أجهزتك وأجهزة الفريق اللي فتحت لوحة التحكم.</p>
+    <div class="vstats">${stat(uniq(t1), "زوار اليوم")}${stat(uniq(inDays(7)), "زوار آخر ٧ أيام")}${stat(u30, "زوار آخر ٣٠ يوم")}${stat(uniq(reqPage), "فتحوا صفحة الطلب", pct(uniq(reqPage), u30) + " من الزوار")}${stat(started, "بدوا يعبّون الطلب")}${stat(sent, "أرسلوا طلب", pct(sent, uniq(reqPage)) + " من اللي فتحوا صفحة الطلب")}${stat(openDrafts().length, "طلبات غير مكتملة", "تلقينها في تبويب «غير مكتملة»")}</div>
+    <div class="vcard" style="margin-bottom:14px"><h3>الزوار يوميًا — آخر ٣٠ يوم</h3><div class="vchart">${days.map(([k, n]) => `<i style="height:${Math.round(n * 100 / max)}%" title="${k}: ${n} زائر"></i>`).join("")}</div><div class="vaxis"><span class="num">${days[0][0]}</span><span>اليوم</span></div></div>
+    <div class="vgrid">
+      <div class="vcard"><h3>من وين جوا</h3>${bars(count(firsts, v => srcName(v.src)), x => x)}</div>
+      <div class="vcard"><h3>الأجهزة</h3>${bars(count(firsts, v => v.device === "mobile" ? "جوال" : "كمبيوتر"), x => x)}</div>
+      <div class="vcard"><h3>الصفحات (زوار)</h3>${bars(count([...new Map(V.map(v => [v.visitor + "|" + v.page, v])).values()], v => ({ home: "الصفحة الرئيسية", request: "صفحة الطلب", privacy: "الخصوصية" })[v.page] || v.page), x => x)}</div>
+    </div></li>`;
 }
 document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => selectTab(b)));
 document.querySelector(".tabs").addEventListener("keydown", (e) => {
   if (!["ArrowLeft","ArrowRight"].includes(e.key)) return;
-  const other = [...document.querySelectorAll(".tabs button")].find(b => b.getAttribute("aria-selected") !== "true"); selectTab(other); other.focus();
+  const tabs = [...document.querySelectorAll(".tabs button")], i = tabs.findIndex(b => b.getAttribute("aria-selected") === "true");
+  const other = tabs[(i + (e.key === "ArrowLeft" ? 1 : tabs.length - 1)) % tabs.length]; selectTab(other); other.focus();
 });
 function selectTab(b) { document.querySelectorAll(".tabs button").forEach(x => { const on = x === b; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; }); col = b.dataset.col; filter = "all"; openId = null; renderReq(); }
 $("q").addEventListener("input", (e) => { query = e.target.value.trim().toLowerCase(); renderReq(); });
@@ -279,6 +354,9 @@ function reqDetail(d) {
 }
 function reqEmpty(h, p) { $("loading").hidden = true; $("list").innerHTML = ""; $("empty").hidden = false; $("empty-h").textContent = h; $("empty-p").textContent = p; }
 function renderReq() {
+  $("q").hidden = col === "visits"; $("csv").hidden = col === "drafts" || col === "visits";
+  if (col === "drafts") return renderDrafts();
+  if (col === "visits") return renderVisits();
   const all = RQ[col];
   const chip = (key, label, n) => `<button type="button" data-f="${key}" aria-pressed="${filter === key}">${label} <span class="num">${toAr(n)}</span></button>`;
   $("chips").innerHTML = chip("all", "الكل", all.length) + STATES.map(([k, l]) => chip(k, l, all.filter(d => (col === "requests" ? eff(d) : d.state) === k).length)).join("") +
@@ -294,6 +372,8 @@ function renderReq() {
     </button>${openId === d.id ? reqDetail(d) : ""}</li>`).join("");
 }
 $("list").addEventListener("click", async (e) => {
+  const dd = e.target.closest("[data-ddel]");
+  if (dd) { if (!arm(dd, "اضغطي «حذف» مرة ثانية للتأكيد.")) return; try { await F.deleteDoc(F.doc(db, "drafts", dd.dataset.ddel)); toast("انحذف."); } catch (err) { toast("ما انحذف: " + (err.code || err.message)); } return; }
   const o = e.target.closest("[data-open]");
   if (o) { openId = openId === o.dataset.open ? null : o.dataset.open; renderReq(); document.querySelector(`[data-open="${o.dataset.open}"]`)?.focus(); return; }
   const s = e.target.closest("[data-save]");

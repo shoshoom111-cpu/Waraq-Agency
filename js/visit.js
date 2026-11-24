@@ -1,0 +1,75 @@
+/* زوار الموقع وطلبات الخدمة غير المكتملة — تنحفظ في قاعدة البيانات (book-campaigns) وتظهر في صفحة الطلبات في لوحة الوكالة.
+   - الزائر = متصفح واحد بمعرّف مجهول، والصفحة تنحسب مرة وحدة في الجلسة.
+   - ما ننحسب: برامج البحث ومعاينات الروابط، ووضع المعاينة في لوحة التحكم، وأجهزة فريق الوكالة (أي جهاز فتح لوحة التحكم).
+   - نموذج الطلب: اللي ينكتب ينحفظ أول بأول كـ«طلب غير مكتمل»، وينعلَّم «اكتمل» لما ينرسل الطلب. */
+(function () {
+  "use strict";
+  var FB = (window.WARAQ || {}).firebase || {};
+  var ok = FB.projectId && FB.apiKey && !/[?&]preview=1/.test(location.search) && window.parent === window;
+  var bot = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|twitterbot|preview|lighthouse|headless|pingdom|monitor/i.test(navigator.userAgent || "") || !!navigator.webdriver;
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var staff = get("waraq-staff") === "1";
+  var vid = get("waraq-vid");
+  if (!vid) { vid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); try { localStorage.setItem("waraq-vid", vid); } catch (e) { vid = ""; } }
+  var src = (function () {
+    var u = (location.search.match(/[?&]utm_source=([^&#]+)/) || [])[1], r = "";
+    try { r = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; } catch (e) {}
+    if (r === location.hostname.replace(/^www\./, "")) r = "";
+    try { u = u ? decodeURIComponent(u) : ""; } catch (e) { u = ""; }
+    return String(u || r || "direct").toLowerCase().slice(0, 60);
+  })();
+  var device = (window.innerWidth || 1024) < 1024 ? "mobile" : "desktop";
+  var BASE = "projects/" + FB.projectId + "/databases/(default)/documents/";
+  var URL_ = "https://firestore.googleapis.com/v1/" + BASE.slice(0, -1) + ":commit?key=" + encodeURIComponent(FB.apiKey);
+
+  function val(v) {
+    if (Array.isArray(v)) return { arrayValue: { values: v.slice(0, 20).map(function (x) { return { stringValue: String(x).slice(0, 200) }; }) } };
+    if (typeof v === "boolean") return { booleanValue: v };
+    if (typeof v === "number") return { integerValue: String(Math.round(v)) };
+    return { stringValue: String(v) };
+  }
+  /* كتابة وحدة: مستند جديد أو تحديثه، والوقت من الخادم */
+  function write(col, id, data, timeFields, mustBeNew) {
+    var fields = {};
+    Object.keys(data).forEach(function (k) { if (data[k] !== undefined && data[k] !== null) fields[k] = val(data[k]); });
+    var w = { update: { name: BASE + col + "/" + id, fields: fields }, updateTransforms: (timeFields || []).map(function (f) { return { fieldPath: f, setToServerValue: "REQUEST_TIME" }; }) };
+    if (mustBeNew) w.currentDocument = { exists: false };
+    else w.updateMask = { fieldPaths: Object.keys(fields) };
+    return fetch(URL_, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ writes: [w] }) }).catch(function () {});
+  }
+  function rid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+
+  /* زيارة الصفحة */
+  var page = /request/.test(location.pathname) ? "request" : /privacy/.test(location.pathname) ? "privacy" : "home";
+  if (ok && !bot && !staff) {
+    var seen = "waraq-seen:" + page, fresh = true;
+    try { fresh = !sessionStorage.getItem(seen); sessionStorage.setItem(seen, "1"); } catch (e) {}
+    if (fresh) write("visits", rid(), { page: page, visitor: vid, src: src, device: device }, ["at"], true);
+  }
+
+  /* طلب غير مكتمل: معرّف واحد لكل جلسة تعبئة */
+  var draftId = null, timer = null, last = "", started = false;
+  try { draftId = sessionStorage.getItem("waraq-draft"); } catch (e) {}
+  function draft(data) {
+    if (!ok || bot || staff || !data) return;
+    if (!String(data.name || "").trim() && String(data.phone || "").replace(/\D/g, "").length < 6) return;   // ما ننحفظ قبل ما يكتب اسمه أو جواله
+    var s = JSON.stringify(data); if (s === last) return; last = s;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (!draftId) { draftId = rid(); try { sessionStorage.setItem("waraq-draft", draftId); } catch (e) {} }
+      var d = { visitor: vid, src: src, device: device, done: false };
+      Object.keys(data).forEach(function (k) { d[k] = data[k]; });
+      write("drafts", draftId, d, started ? ["at"] : ["at", "startedAt"], false);
+      started = true;
+    }, 1200);
+  }
+  /* بعد ما ينرسل الطلب: نعلّم المسودة إنها اكتملت (وتختفي من «غير مكتملة») */
+  function done(requestId) {
+    clearTimeout(timer);
+    if (!ok || !draftId) return;
+    write("drafts", draftId, { done: true, requestId: String(requestId || "").slice(0, 40) }, ["at"], false);
+    try { sessionStorage.removeItem("waraq-draft"); } catch (e) {}
+    draftId = null; last = ""; started = false;
+  }
+  window.WaraqTrack = { visitor: vid, draft: draft, done: done };
+})();

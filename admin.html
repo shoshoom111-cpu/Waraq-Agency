@@ -106,6 +106,25 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .tabs button:hover{background:rgba(255,216,74,.45)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--sheet)}
 .tabs .c{font-size:.78rem;opacity:.8}
+.tabs{flex-wrap:wrap}
+/* الزوار */
+.vstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 18px}
+.vstat{background:var(--sheet);box-shadow:var(--lift);padding:12px 14px}
+.vstat b{display:block;font-family:var(--display);font-weight:800;font-size:1.6rem;line-height:1.3}
+.vstat span{font-family:var(--display);font-size:.8rem;color:var(--muted)}
+.vstat small{display:block;font-size:.78rem;color:var(--muted)}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:14px}
+.vcard{background:var(--sheet);box-shadow:var(--lift);padding:14px 16px}
+.vcard h3{font-size:.95rem;margin:0 0 10px}
+.vchart{display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1.5px solid var(--ink)}
+.vchart i{flex:1;background:var(--ink);min-height:2px;position:relative}
+.vchart i:hover{background:var(--mark)}
+.vaxis{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px}
+.vbar{display:grid;grid-template-columns:minmax(0,9rem) 1fr 2.5rem;gap:8px;align-items:center;font-size:.86rem;margin-bottom:6px}
+.vbar u{display:block;height:9px;background:var(--mark);border:1px solid var(--ink);text-decoration:none}
+.vbar .n{text-align:left;font-family:var(--display)}
+.vnote{font-size:.84rem;color:var(--muted);margin:0 0 14px;line-height:1.8}
+.dmeta{font-size:.84rem;color:var(--muted)}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .search{width:220px;background:var(--sheet)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--rule)}
@@ -261,6 +280,8 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="tabs" role="tablist" aria-label="نوع الطلبات">
         <button type="button" role="tab" aria-selected="true" data-col="requests">طلبات الخدمة <span class="c num" data-count="requests">٠</span></button>
         <button type="button" role="tab" aria-selected="false" data-col="joinRequests" tabindex="-1">طلبات المسوقين <span class="c num" data-count="joinRequests">٠</span></button>
+        <button type="button" role="tab" aria-selected="false" data-col="drafts" tabindex="-1">غير مكتملة <span class="c num" data-count="drafts">٠</span></button>
+        <button type="button" role="tab" aria-selected="false" data-col="visits" tabindex="-1">الزوار</button>
       </div>
       <div class="tools">
         <input class="search" id="q" type="search" placeholder="ابحث بالاسم، الكتاب، الحساب…" aria-label="بحث">
@@ -365,9 +386,9 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=202611241302"></script>
-<script src="js/content.js?v=202611241302"></script>
-<script src="js/agreement-default.js?v=202611241302"></script>
-<script type="module" src="js/admin.js?v=202611241302"></script>
+<script src="config.js?v=202611241340"></script>
+<script src="js/content.js?v=202611241340"></script>
+<script src="js/agreement-default.js?v=202611241340"></script>
+<script type="module" src="js/admin.js?v=202611241340"></script>
 </body>
 </html>

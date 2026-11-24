@@ -339,6 +339,32 @@ function save(data,lines,onLate){
   });
 }
 
+/* ---------- طلب غير مكتمل: نحفظ اللي انكتب أول بأول (بدون تحقق)، ويظهر في لوحة الوكالة لو ما انرسل ---------- */
+function draftData(){
+  var d={}, svc=[], other=0;
+  try{
+    fields().forEach(function(f){
+      if(shownBy(f)===false)return;
+      if(f.type==="svclist"){svcValue(f).forEach(function(x){svc.push(x.s)});return}
+      if(f.type==="checks"&&f.other)otherRows(f).forEach(function(o){svc.push(o.s)});
+      var v=valueOf(f), empty=Array.isArray(v)?!v.length:!v; if(empty)return;
+      if(CORE[f.key]&&!d.hasOwnProperty(f.key)){
+        if(f.key==="picks")svc=svc.concat(Array.isArray(v)?v:[v]);
+        else if(["name","phone","email","book","who","pkg","budget"].indexOf(f.key)>-1)d[f.key]=(Array.isArray(v)?v.join("، "):String(v)).slice(0,f.key==="book"||f.key==="pkg"?200:120);
+        else other++;
+      }else other++;
+    });
+  }catch(e){return null}
+  if(svc.length)d.services=svc.join("، ").slice(0,600);
+  d.filled=Object.keys(d).length+other;
+  return d;
+}
+if(!PREVIEW){
+  var saveDraft=function(){if(window.WaraqTrack&&!$("form").hidden)WaraqTrack.draft(draftData())};
+  $("form").addEventListener("input",saveDraft);
+  $("form").addEventListener("change",saveDraft);
+}
+
 /* ---------- submit ---------- */
 function busy(on){var b=$("go");b.disabled=on;b.setAttribute("aria-busy",on);b.querySelector(".t").textContent=on?"جارٍ الإرسال…":b.dataset.label}
 function show(okMode,d,ref,lines,warn){
@@ -386,7 +412,7 @@ $("form").addEventListener("submit",function(e){
   data.dash=false;
   if(!hasDB){show(false,data,"",lines);return}
   busy(true);
-  var okd=function(ref){busy(false);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)};
+  var okd=function(ref){busy(false);if(window.WaraqTrack)WaraqTrack.done(ref.id);show(true,data,ref.id.slice(0,6).toUpperCase(),lines)};
   save(data,lines,okd).then(okd,
     function(err){busy(false);if(window.console)console.warn("Firestore:",err);
       var denied=err&&err.code==="permission-denied";
