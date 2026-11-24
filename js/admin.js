@@ -1024,7 +1024,7 @@ $("wa-test").addEventListener("click", async () => {
   if (!ph || !key) return wmsg("اكتبي الرقم والمفتاح واحفظيهم أول.", true);
   $("wa-test").disabled = true; wmsg("جارٍ الإرسال…");
   try {
-    await fetch("https://api.callmebot.com/whatsapp.php?phone=%2B" + ph + "&apikey=" + encodeURIComponent(key) + "&text=" + encodeURIComponent("تجربة تنبيهات وكالة ورق ✅\nإذا وصلتك هذي الرسالة، تنبيهات الطلبات بالواتساب شغالة."), { mode: "no-cors" });
+    await fetch("https://api.callmebot.com/whatsapp.php?phone=%2B" + ph + "&apikey=" + encodeURIComponent(key) + "&text=" + encodeURIComponent("تجربة تنبيهات وكالة رحلة ورق للدعاية والإعلان ✅\nإذا وصلتك هذي الرسالة، تنبيهات الطلبات بالواتساب شغالة."), { mode: "no-cors" });
     wmsg("انرسلت. لو ما وصلتك خلال دقيقة، تأكدي من الرقم والمفتاح.");
   } catch { wmsg("ما انرسلت. تأكدي من الاتصال.", true); } finally { $("wa-test").disabled = false; }
 });
@@ -1039,7 +1039,7 @@ $("ntf-test").addEventListener("click", async () => {
   $("ntf-test").disabled = true; nmsg("جارٍ الإرسال…");
   try {
     const r = await fetch("https://formsubmit.co/ajax/" + v, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ _subject: "تجربة تنبيهات وكالة ورق", _template: "box", _captcha: "false", message: "هذا إيميل تجربة من صفحة إدارة الوكالة. إذا وصلك، التنبيهات شغالة." }) });
+      body: JSON.stringify({ _subject: "تجربة تنبيهات وكالة رحلة ورق للدعاية والإعلان", _template: "box", _captcha: "false", message: "هذا إيميل تجربة من صفحة إدارة الوكالة. إذا وصلك، التنبيهات شغالة." }) });
     const j = await r.json().catch(() => ({}));
     if (String(j.success) === "true") nmsg("انرسل. شيّكي على بريدك.");
     else if (/activat/i.test(j.message || "")) nmsg("وصلك إيميل تفعيل من FormSubmit. افتحيه واضغطي Activate Form، وبعدها جرّبي مرة ثانية.");
