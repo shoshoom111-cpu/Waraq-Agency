@@ -429,6 +429,7 @@ function loadContent(id) {
   const E = ED[id];
   if (!E.loading) E.loading = F.getDoc(F.doc(db, "siteContent", id)).then(s => {
     const j = s.exists() ? s.data().json : null;
+    E.ver = s.exists() && s.data().updatedAt && s.data().updatedAt.toMillis ? s.data().updatedAt.toMillis() : 0;
     E.pub = j || JSON.stringify(WC.defaults(id));
     E.data = prep(id, E.pub); E.saved = JSON.stringify(E.data);
     let draft = null; try { draft = localStorage.getItem("waraq-draft-" + id); } catch {}
@@ -474,11 +475,17 @@ function syncPkg(H, Rq) {
   f.options.forEach(o => { if (o && o.t && !/^#/.test(o.t) && (!o.cid || !live.has(o.cid))) o.hidden = true; });
   return JSON.stringify(f.options) !== before;
 }
-async function publish(id, json, note) {
-  const batch = F.writeBatch(db);
-  batch.set(F.doc(db, "siteContent", id), { json, updatedAt: F.serverTimestamp() });
-  batch.set(F.doc(F.collection(db, "siteHistory")), { kind: id, json, at: F.serverTimestamp(), note: String(note || "").slice(0, 300), by: (USER && USER.email || "").slice(0, 120) });
-  await batch.commit();
+/* الحفظ ما يكتب فوق نسخة أحدث انحفظت من جهاز أو صفحة ثانية بعد ما انفتح المحرر هنا (الاسترجاع من السجل يتجاوز هذا عن قصد) */
+async function publish(id, json, note, force) {
+  const ref = F.doc(db, "siteContent", id), E = ED[id];
+  await F.runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref);
+    const v = cur.exists() && cur.data().updatedAt && cur.data().updatedAt.toMillis ? cur.data().updatedAt.toMillis() : 0;
+    if (!force && E.ver != null && v && v !== E.ver) { const e = new Error("stale"); e.code = "stale"; throw e; }
+    tx.set(ref, { json, updatedAt: F.serverTimestamp() });
+    tx.set(F.doc(F.collection(db, "siteHistory")), { kind: id, json, at: F.serverTimestamp(), note: String(note || "").slice(0, 300), by: (USER && USER.email || "").slice(0, 120) });
+  });
+  try { const s = await F.getDoc(ref); E.ver = s.exists() && s.data().updatedAt && s.data().updatedAt.toMillis ? s.data().updatedAt.toMillis() : E.ver; } catch {}
   ED[id].saved = json; ED[id].pub = json;
   try { localStorage.setItem("waraq-content-" + id, json); } catch {}
 }
@@ -832,7 +839,7 @@ $("ed-save").addEventListener("click", async () => {
     }
     $("ed-note").value = ""; toast("انحفظ ونُشر. التعديل ظاهر في الموقع الحين." + extra);
   }
-  catch (err) { toast("ما انحفظ: " + (err.code || err.message)); }
+  catch (err) { toast(err.code === "stale" ? "ما انحفظ: فيه نسخة أحدث انحفظت من جهاز أو صفحة ثانية. انسخي تعديلك، وحدّثي الصفحة (F5) وعدّلي على النسخة الجديدة." : "ما انحفظ: " + (err.code || err.message)); }
   finally { btn.textContent = "حفظ ونشر"; updateState(); }
 });
 document.querySelectorAll("[data-dev]").forEach(b => b.addEventListener("click", () => {
@@ -875,7 +882,7 @@ async function restore(kind, json, note, btn) {
   if (isDirty(kind) && !confirm("عندك تعديلات ما انحفظت على " + KIND[kind] + "، بتنمسح بالاسترجاع. تكملين؟")) return;
   if (btn) btn.disabled = true;
   try {
-    await publish(kind, json, note);
+    await publish(kind, json, note, true);
     ED[kind].data = prep(kind, json); ED[kind].saved = JSON.stringify(ED[kind].data); ED[kind].undo = []; updateState();
     toast("رجعت " + KIND[kind] + " لهذي النسخة، وصارت منشورة."); closeModal(); loadHistory();
   } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); }
