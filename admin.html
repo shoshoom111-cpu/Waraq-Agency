@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>إدارة ورق</title>
-<meta name="theme-color" content="#f3f5f1">
+<meta name="theme-color" content="#0F30B3">
 <link rel="icon" type="image/png" sizes="32x32" href="img/mark-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="img/mark-192.png">
 <link rel="apple-touch-icon" href="img/mark-180.png">
@@ -250,6 +250,12 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .brand{align-items:center}
 .brand .logo{display:block;height:46px;width:auto}
 .brand .logo-mark{display:block;height:40px;width:40px}
+
+/* ألوان الشعار: أزرق قارب «رحلة ورق» للأزرار، وأزرق فاتح للتظليل بدل الأصفر. لون الكتابة كحلي مثل ما هو */
+:root{--brand:#0F30B3;--brand-2:#0B248A;--mark:#c9d4f7}
+.btn:not(.line):not(.danger){background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:not(.line):not(.danger):hover{background:var(--mark);border-color:var(--brand);color:var(--brand-2)}
+.btn.line:hover{background:var(--brand);border-color:var(--brand);color:#fff}
 </style>
 </head>
 <body>
@@ -288,6 +294,7 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
         <button type="button" role="tab" aria-selected="true" data-col="requests">طلبات الخدمة <span class="c num" data-count="requests">٠</span></button>
         <button type="button" role="tab" aria-selected="false" data-col="joinRequests" tabindex="-1">طلبات المسوقين <span class="c num" data-count="joinRequests">٠</span></button>
         <button type="button" role="tab" aria-selected="false" data-col="drafts" tabindex="-1">غير مكتملة <span class="c num" data-count="drafts">٠</span></button>
+        <button type="button" role="tab" aria-selected="false" data-col="messages" tabindex="-1">الدعم الفني <span class="c num" data-count="messages">٠</span></button>
         <button type="button" role="tab" aria-selected="false" data-col="visits" tabindex="-1">الزوار</button>
       </div>
       <div class="tools">
@@ -399,9 +406,9 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=202611260944"></script>
-<script src="js/content.js?v=202611260944"></script>
-<script src="js/agreement-default.js?v=202611260944"></script>
-<script type="module" src="js/admin.js?v=202611260944"></script>
+<script src="config.js?v=202611261523"></script>
+<script src="js/content.js?v=202611261523"></script>
+<script src="js/agreement-default.js?v=202611261523"></script>
+<script type="module" src="js/admin.js?v=202611261523"></script>
 </body>
 </html>

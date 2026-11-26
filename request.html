@@ -12,7 +12,7 @@
 <meta property="og:image" content="https://waraq-agency.com/img/mark-512.png">
 <meta property="og:locale" content="ar_SA">
 <meta name="description" content="سجّل طلبك لدى وكالة رحلة ورق للدعاية والإعلان: بياناتك، كتابك وحالته، والخدمة اللي تحتاجها.">
-<meta name="theme-color" content="#f3f5f1">
+<meta name="theme-color" content="#0F30B3">
 <link rel="icon" type="image/png" sizes="32x32" href="img/mark-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="img/mark-192.png">
 <link rel="apple-touch-icon" href="img/mark-180.png">
@@ -199,12 +199,24 @@ body.loading .intro,body.loading .layout{visibility:hidden}
 .brand .logo{display:block;height:56px;width:auto}
 @media (max-width:600px){.brand .logo{height:46px}}
 .brand .logo-mark{display:block;height:40px;width:40px}
+
+/* ألوان الشعار: أزرق قارب «رحلة ورق» للأزرار، وأزرق فاتح للتظليل بدل الأصفر. لون الكتابة كحلي مثل ما هو */
+:root{--brand:#0F30B3;--brand-2:#0B248A;--mark:#c9d4f7}
+.btn:not(.line):not(.danger){background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:not(.line):not(.danger):hover{background:var(--mark);border-color:var(--brand);color:var(--brand-2)}
+.btn.line:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* «إصدار تجريبي» في نص الشريط العلوي */
+.mast{position:relative}
+.beta{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--display);font-weight:700;font-size:.78rem;line-height:1.6;color:var(--brand,#0F30B3);background:var(--mark);border:1.5px solid var(--brand,#0F30B3);padding:2px 10px;white-space:nowrap;pointer-events:none}
+@media (max-width:420px){.beta{font-size:.7rem;padding:1px 7px}}
 </style>
 </head>
 <body class="loading">
 <div class="wrap">
   <header class="mast">
     <a class="brand" href="index.html"><img class="logo" src="img/wordmark-blue.png" alt="رحلة ورق" width="56" height="46"><span>وكالة تسويق للكتب</span></a>
+    <span class="beta">إصدار تجريبي</span>
     <a class="back" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>الرجوع للموقع</a>
   </header>
 
@@ -225,7 +237,7 @@ body.loading .intro,body.loading .layout{visibility:hidden}
       </form>
 
       <section class="done" id="done" hidden tabindex="-1" aria-live="polite">
-        <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#ffd84a" stroke="#16223a" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="#16223a" stroke-width="2.6"/></svg>
+        <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#c9d4f7" stroke="#16223a" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="#16223a" stroke-width="2.6"/></svg>
         <div id="ok">
           <h2><span id="ok-title">وصلنا طلبك</span></h2>
           <p>رقم الطلب <span class="ref" id="ref"></span>. <span id="ok-text"></span></p>
@@ -247,9 +259,9 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   </div>
 </div>
 <noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
-<script src="config.js?v=202611260944"></script>
-<script src="js/content.js?v=202611260944"></script>
-<script src="js/visit.js?v=202611260944"></script>
-<script src="js/request.js?v=202611260944"></script>
+<script src="config.js?v=202611261523"></script>
+<script src="js/content.js?v=202611261523"></script>
+<script src="js/visit.js?v=202611261523"></script>
+<script src="js/request.js?v=202611261523"></script>
 </body>
 </html>

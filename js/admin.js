@@ -242,6 +242,11 @@ function startExtra() {
     const n = openDrafts().length; document.querySelector('[data-count="drafts"]').textContent = toAr(n);
     if (col === "drafts" || col === "visits") renderReq();
   }, (err) => { EX.dl = true; EX.derr = err.code || err.message; if (col === "drafts") renderReq(); }));
+  unsubs.push(F.onSnapshot(F.query(F.collection(db, "messages"), F.orderBy("at", "desc"), F.limit(500)), (snap) => {
+    EX.msgs = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })); EX.ml = true; EX.merr = "";
+    const n = EX.msgs.filter(m => m.state === "new").length; document.querySelector('[data-count="messages"]').textContent = toAr(n);
+    if (col === "messages") renderReq();
+  }, (err) => { EX.ml = true; EX.merr = err.code || err.message; if (col === "messages") renderReq(); }));
   unsubs.push(F.onSnapshot(F.query(F.collection(db, "visits"), F.where("at", ">=", F.Timestamp.fromDate(ago(30 * DAY))), F.orderBy("at", "desc"), F.limit(10000)), (snap) => {
     EX.visits = snap.docs.map(d => d.data({ serverTimestamps: "estimate" })); EX.vl = true; EX.verr = "";
     if (col === "visits") renderReq();
@@ -268,6 +273,25 @@ function renderDrafts() {
       <button class="btn danger sm" type="button" data-ddel="${d.id}">حذف</button></div></div>` : "";
     return `<li class="item${open ? " open" : ""}"><button class="row" type="button" data-open="${d.id}" aria-expanded="${open}" aria-controls="d-${d.id}">
       <span class="nm">${esc(d.name || d.phone || "بدون اسم")}</span><span class="sm">${esc([d.book && "«" + d.book + "»", d.services || d.pkg, (d.filled || 0) + " خانات معبّاة"].filter(Boolean).join(" · "))}</span><span class="pill" data-s="new">غير مكتمل</span><span class="dt num">${esc(since(tsd(d.at)))}</span>
+    </button>${det}</li>`;
+  }).join("");
+}
+/* رسائل «دعم فني» */
+function renderMsgs() {
+  $("chips").innerHTML = ""; $("loading").hidden = !!EX.ml; if (!EX.ml) { $("list").innerHTML = ""; $("empty").hidden = true; return; }
+  if (EX.merr) return reqEmpty("تعذّر تحميل الرسائل", EX.merr);
+  const all = (EX.msgs || []).filter(m => !query || JSON.stringify(Object.values(m)).toLowerCase().includes(query));
+  if (!all.length) return reqEmpty("ما فيه رسائل", "لما أحد يرسل من زر «دعم فني» في الموقع تظهر رسالته هنا.");
+  $("empty").hidden = true;
+  $("list").innerHTML = all.map(m => {
+    const open = openId === m.id, n = waNum(m.contact), mail = /@/.test(m.contact || "");
+    const det = open ? `<div class="detail" id="d-${m.id}"><dl><dt>التاريخ</dt><dd class="num">${esc(when(m.at))}</dd><dt>للتواصل</dt><dd dir="auto">${esc(m.contact || "")}</dd><dt>من صفحة</dt><dd>${esc(({ home: "الرئيسية", request: "صفحة الطلب", privacy: "الخصوصية" })[m.page] || m.page || "")}</dd></dl>
+      <p style="white-space:pre-wrap;margin:10px 0 14px;line-height:1.9">${esc(m.msg || "")}</p>
+      <div class="acts">${!mail && n.length >= 10 ? `<button class="btn sm" type="button" data-wa="${n}" data-wato="${esc(m.name || "")}" data-wam="${esc("أهلًا " + (m.name || "") + "، معك " + agency() + ". بخصوص رسالتك: ")}">رد بالواتساب</button>` : ""}${mail ? `<a class="btn sm" href="mailto:${esc(m.contact)}?subject=${encodeURIComponent("رد من " + agency())}">رد بالبريد</a>` : ""}
+      ${m.state === "new" ? `<button class="btn line sm" type="button" data-mdone="${m.id}">تم الرد</button>` : `<button class="btn line sm" type="button" data-mnew="${m.id}">رجّعها جديدة</button>`}
+      <button class="btn danger sm" type="button" data-mdel="${m.id}">حذف</button></div></div>` : "";
+    return `<li class="item${open ? " open" : ""}"><button class="row" type="button" data-open="${m.id}" aria-expanded="${open}" aria-controls="d-${m.id}">
+      <span class="nm">${esc(m.name || "بدون اسم")}</span><span class="sm">${esc(String(m.msg || "").slice(0, 90))}</span><span class="pill" data-s="${m.state === "new" ? "new" : "approved"}">${m.state === "new" ? "جديدة" : "تم الرد"}</span><span class="dt num">${esc(when(m.at))}</span>
     </button>${det}</li>`;
   }).join("");
 }
@@ -354,8 +378,9 @@ function reqDetail(d) {
 }
 function reqEmpty(h, p) { $("loading").hidden = true; $("list").innerHTML = ""; $("empty").hidden = false; $("empty-h").textContent = h; $("empty-p").textContent = p; }
 function renderReq() {
-  $("q").hidden = col === "visits"; $("csv").hidden = col === "drafts" || col === "visits";
+  $("q").hidden = col === "visits"; $("csv").hidden = col === "drafts" || col === "visits" || col === "messages";
   if (col === "drafts") return renderDrafts();
+  if (col === "messages") return renderMsgs();
   if (col === "visits") return renderVisits();
   const all = RQ[col];
   const chip = (key, label, n) => `<button type="button" data-f="${key}" aria-pressed="${filter === key}">${label} <span class="num">${toAr(n)}</span></button>`;
@@ -372,6 +397,10 @@ function renderReq() {
     </button>${openId === d.id ? reqDetail(d) : ""}</li>`).join("");
 }
 $("list").addEventListener("click", async (e) => {
+  const md = e.target.closest("[data-mdone],[data-mnew]");
+  if (md) { const id = md.dataset.mdone || md.dataset.mnew; try { await F.updateDoc(F.doc(db, "messages", id), { state: md.dataset.mdone ? "done" : "new" }); } catch (err) { toast("ما انحفظ: " + (err.code || err.message)); } return; }
+  const mx = e.target.closest("[data-mdel]");
+  if (mx) { if (!arm(mx, "اضغطي «حذف» مرة ثانية للتأكيد.")) return; try { await F.deleteDoc(F.doc(db, "messages", mx.dataset.mdel)); toast("انحذفت الرسالة."); } catch (err) { toast("ما انحذفت: " + (err.code || err.message)); } return; }
   const dd = e.target.closest("[data-ddel]");
   if (dd) { if (!arm(dd, "اضغطي «حذف» مرة ثانية للتأكيد.")) return; try { await F.deleteDoc(F.doc(db, "drafts", dd.dataset.ddel)); toast("انحذف."); } catch (err) { toast("ما انحذف: " + (err.code || err.message)); } return; }
   const o = e.target.closest("[data-open]");
@@ -440,6 +469,7 @@ function loadContent(id) {
 /* request options get a hidden stable id, so a renamed option can be followed everywhere it is used */
 function prep(id, json) {
   const D = JSON.parse(json);
+  if (id === "home") (D.sections || []).forEach(s => { if (s && s.type === "join") s.data.fields = WC.joinFields(s.data); });
   if (id === "request") { WC.normRequest(D); reqFields(D).forEach(f => { if (Array.isArray(f.options)) f.options.forEach((o, i) => { if (o && !o.id) o.id = "o" + i; }); }); }
   return D;
 }
@@ -496,7 +526,7 @@ window.addEventListener("beforeunload", (e) => { if (anyDirty()) { e.preventDefa
 /* =============== editor schema =============== */
 const S = (k, l, t = "text", ex = {}) => ({ k, l, t, ...ex });
 const TITLE = S("title", "العنوان", "text", { title: true }), SUB = S("sub", "السطر تحت العنوان");
-const L = (k, l, item, tpl, tk) => S(k, l, "list", { item, tpl, tk });
+const L = (k, l, item, tpl, tk, ex = {}) => S(k, l, "list", { item, tpl, tk, ...ex });
 const TYPES = {
   hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta1", "زر الطلب"), S("cta2", "الزر الثاني (يودّي للحملات)"),
       L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text")] },
@@ -518,7 +548,12 @@ const TYPES = {
     make: () => ({ title: "قالوا عنا", sub: "", items: [{ quote: "", name: "اسم العميل", role: "" }] }) },
   request: { name: "قسم اطلب خدمة", unique: true, fields: [TITLE, SUB, S("boxTitle", "عنوان المربع"), S("boxText", "نص المربع", "area"), S("button", "نص الزر"), S("waButton", "زر الواتساب"), S("socialText", "نص الحسابات")],
     make: () => WC.defaults("home").sections.find(s => s.type === "request").data },
-  join: { name: "انضم كمسوق", unique: true, fields: [TITLE, SUB, S("button", "زر الإرسال"), S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area")],
+  join: { name: "انضم كمسوق", unique: true, fields: [TITLE, SUB,
+    L("fields", "خانات النموذج", [S("label", "اسم الخانة", "text", { title: true }),
+      S("type", "نوع الخانة", "select", { opts: [["text", "نص قصير"], ["area", "نص طويل"], ["tel", "رقم جوال"], ["number", "رقم"], ["checks", "اختيارات (أكثر من وحدة)"], ["radio", "اختيار واحد"]] }),
+      S("options", "الخيارات", "area", { hint: "لخانات الاختيار بس. كل سطر خيار" }), S("placeholder", "نص رمادي داخل الخانة"), S("required", "إجبارية", "bool")],
+      { label: "خانة جديدة", type: "text", options: "", placeholder: "", required: false }, "label", { lockKeys: ["name", "handle"] }),
+    S("button", "زر الإرسال"), S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area")],
     make: () => WC.defaults("home").sections.find(s => s.type === "join").data }
 };
 const CARD = [S("label", "الوسم الصغير"), S("title", "اسم الحملة", "text", { title: true }), S("text", "الوصف"), S("items", "المميزات", "area", { hint: "كل سطر ميزة" }), S("pick", "تنختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" }), S("star", "تمييزها (الأكثر طلبًا)", "bool")];
@@ -570,7 +605,7 @@ function listHTML(f, p, arr) {
   const open = OPEN[CUR.id];
   return `<div class="lst"><h4>${esc(f.l)} <span class="hint">${toAr(arr.length)}</span></h4>` +
     arr.map((it, i) => { const k = p + "." + i, t = (it && it[f.tk]) || "عنصر " + toAr(i + 1);
-      return `<details class="card${it.hidden ? " off" : ""}" data-k="${k}"${open[k] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(t)}</span></span>${ops(p, i, arr.length, it)}</summary><div class="body">${fieldsHTML(f.item, k, it)}</div></details>`;
+      return `<details class="card${it.hidden ? " off" : ""}" data-k="${k}"${open[k] ? " open" : ""}><summary><span class="t"><span class="tt">${esc(t)}</span></span>${ops(p, i, arr.length, it, f.lockKeys && it && f.lockKeys.includes(it.key) ? { noHide: true, noDel: true } : {})}</summary><div class="body">${fieldsHTML(f.item, k, it)}</div></details>`;
     }).join("") + `<div class="addrow"><button class="btn line sm" type="button" data-op="add" data-p="${p}" data-tpl='${esc(JSON.stringify(f.tpl))}'>+ إضافة</button></div></div>`;
 }
 

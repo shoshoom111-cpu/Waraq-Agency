@@ -99,6 +99,23 @@ function normField(f){
   if(!CHOICE[f.type]&&Array.isArray(f.options))f.options=f.options.map(function(o){return o.t}).join("\n");
   return f;
 }
+/* خانات نموذج «انضم إلى شبكة المسوقين». key يربط الخانة بعمود في لوحة المسوقين؛ الخانة بدون key تنحفظ كإجابة إضافية.
+   الاسم والحساب ثابتين (ما ينحذفون ولا ينخفون). */
+var JOIN_FIELDS=[
+  {key:"name",label:"الاسم",type:"text",required:true},
+  {key:"handle",label:"الحساب",type:"text",placeholder:"@",required:true},
+  {key:"phone",label:"الجوال (واتساب)",type:"tel",placeholder:"05xxxxxxxx"},
+  {key:"genre",label:"نوع الكتب التي تقدّمها",type:"text",placeholder:"روايات، فكر، أطفال..."},
+  {key:"platforms",label:"المنصات",type:"checks",options:"تيك توك\nإنستقرام\nإكس\nسناب شات",required:true},
+  {key:"views",label:"متوسط المشاهدات للمقطع",type:"number"},
+  {key:"price",label:"سعرك للمقطع (ريال)",type:"number"},
+  {key:"license",label:"رخصة موثوق",type:"radio",options:"لدي رخصة\nقيد الإصدار\nلا يوجد"}
+];
+function joinFields(d){
+  var f=Array.isArray(d&&d.fields)&&d.fields.length?d.fields:clone(JOIN_FIELDS);
+  ["handle","name"].forEach(function(k){var x=f.filter(function(y){return y&&y.key===k})[0];if(!x){x=clone(JOIN_FIELDS.filter(function(y){return y.key===k})[0]);f.unshift(x)}x.hidden=false;x.required=true});
+  return f;
+}
 function normRequest(r){(r.parts||[]).forEach(function(p){(p.fields||[]).forEach(function(f){normField(f);if(Array.isArray(f.options))f.options.forEach(function(o){if(o&&Array.isArray(o.sub))o.sub.forEach(normField)})})});return r}
 normRequest(REQUEST);
 REQUEST.parts.forEach(function(p){p.fields.forEach(function(f){if(f.key==="picks")f.options.forEach(function(o){if(o.t==="حملة مسوقين")o.dash=true})})});
@@ -129,7 +146,7 @@ function fetchContent(id){
 
 window.WaraqContent={
   defaults:function(id){return clone(id==="home"?HOME:REQUEST)},
-  CORE:CORE,LOCKED:LOCKED,clone:clone,normField:normField,normRequest:normRequest,CHOICE:CHOICE,
+  CORE:CORE,LOCKED:LOCKED,JOIN_FIELDS:JOIN_FIELDS,joinFields:joinFields,clone:clone,normField:normField,normRequest:normRequest,CHOICE:CHOICE,
   cached:function(id){return readCache(id)},
   /* cb(content, fromNetwork) قد تُستدعى مرتين: من النسخة المحفوظة في الجهاز ثم من القاعدة إذا اختلفت */
   load:function(id,cb){

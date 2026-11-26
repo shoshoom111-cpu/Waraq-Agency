@@ -9,7 +9,7 @@
 <title>سياسة الخصوصية · رحلة ورق</title>
 <meta name="description" content="كيف تستخدم وكالة رحلة ورق للدعاية والإعلان البيانات اللي ترسلها في طلب الخدمة أو طلب الانضمام.">
 <link rel="canonical" href="https://waraq-agency.com/privacy.html">
-<meta name="theme-color" content="#f3f5f1">
+<meta name="theme-color" content="#0F30B3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@700;800&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
@@ -29,11 +29,22 @@ h1 span{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bott
 h2{font-family:var(--display);font-size:1.15rem;margin:30px 0 6px}
 p,li{max-width:62ch}ul{padding-inline-start:1.2em}
 .muted{color:var(--muted);font-size:.95rem}
+
+/* ألوان الشعار: أزرق قارب «رحلة ورق» للأزرار، وأزرق فاتح للتظليل بدل الأصفر. لون الكتابة كحلي مثل ما هو */
+:root{--brand:#0F30B3;--brand-2:#0B248A;--mark:#c9d4f7}
+.btn:not(.line):not(.danger){background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:not(.line):not(.danger):hover{background:var(--mark);border-color:var(--brand);color:var(--brand-2)}
+.btn.line:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* «إصدار تجريبي» في نص الشريط العلوي */
+.mast{position:relative}
+.beta{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--display);font-weight:700;font-size:.78rem;line-height:1.6;color:var(--brand,#0F30B3);background:var(--mark);border:1.5px solid var(--brand,#0F30B3);padding:2px 10px;white-space:nowrap;pointer-events:none}
+@media (max-width:420px){.beta{font-size:.7rem;padding:1px 7px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="mast"><a class="brand" href="index.html"><img src="img/wordmark-blue.png" alt="رحلة ورق" style="display:block;height:40px;width:auto"></a><a href="request.html">اطلب خدمة</a></header>
+  <header class="mast"><a class="brand" href="index.html"><img src="img/wordmark-blue.png" alt="رحلة ورق" style="display:block;height:40px;width:auto"></a><span class="beta">إصدار تجريبي</span><a href="request.html">اطلب خدمة</a></header>
   <h1><span>سياسة الخصوصية</span></h1>
   <p class="muted">آخر تحديث: نوفمبر 2026</p>
 
@@ -62,5 +73,7 @@ p,li{max-width:62ch}ul{padding-inline-start:1.2em}
   <h2>حقوقك</h2>
   <p>تقدر تطلب نسخة من بياناتك، أو تصحيحها، أو حذفها في أي وقت. راسلنا على الواتساب <a href="https://wa.me/966548256023" dir="ltr">wa.me/966548256023</a> أو على حساباتنا <span dir="ltr">@Waraq_Agency</span>.</p>
 </div>
+<script src="config.js?v=202611261522"></script>
+<script src="js/visit.js?v=202611261522"></script>
 </body>
 </html>

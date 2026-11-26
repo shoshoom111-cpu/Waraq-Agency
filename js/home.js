@@ -99,24 +99,30 @@ var R={
   join:function(s,i,ctx){
     var d=s.data;
     return '<section class="req alt2" id="'+esc(s.id)+'" data-sec="'+i+'"><div class="wrap">'+head(ctx.folio[s.id],d)+
-    '<form id="mk-form" novalidate>'+
-      '<div><label for="mk-name">الاسم</label><input type="text" id="mk-name" autocomplete="name" maxlength="120" required></div>'+
-      '<div><label for="mk-handle">الحساب</label><input type="text" id="mk-handle" dir="ltr" placeholder="@" maxlength="120" required></div>'+
-      '<div><label for="mk-contact">الجوال <small>(واتساب)</small></label><input type="text" id="mk-contact" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05xxxxxxxx" maxlength="20"></div>'+
-      '<div><label for="mk-genre">نوع الكتب التي تقدّمها</label><input type="text" id="mk-genre" placeholder="روايات، فكر، أطفال..." maxlength="200"></div>'+
-      '<fieldset class="full"><legend>المنصات</legend><div class="picks" id="mk-plat">'+["تيك توك","إنستقرام","إكس","سناب شات"].map(function(p,k){return '<label for="pl-'+(k+1)+'"><input type="checkbox" id="pl-'+(k+1)+'" value="'+p+'">'+p+'</label>'}).join("")+'</div></fieldset>'+
-      '<div><label for="mk-views">متوسط المشاهدات للمقطع</label><input type="text" id="mk-views" inputmode="numeric" maxlength="40"></div>'+
-      '<div><label for="mk-price">سعرك للمقطع (ريال)</label><input type="text" id="mk-price" inputmode="numeric" maxlength="40"></div>'+
-      '<fieldset class="full"><legend>رخصة موثوق</legend><div class="picks" id="mk-lic">'+["لدي رخصة","قيد الإصدار","لا يوجد"].map(function(p,k){return '<label for="lc-'+(k+1)+'"><input type="radio" name="lic" id="lc-'+(k+1)+'" value="'+p+'">'+p+'</label>'}).join("")+'</div></fieldset>'+
+    '<form id="mk-form" novalidate>'+joinFieldsHTML(d)+
       '<div class="hp" aria-hidden="true"><label for="mk-web">اترك هذا الحقل فارغًا</label><input type="text" id="mk-web" tabindex="-1" autocomplete="off"></div>'+
       '<div class="full send"><button type="submit" class="btn" id="mk-go"><span class="spin" aria-hidden="true"></span><span class="t">'+esc(d.button||"أرسل طلب الانضمام")+'</span></button><span class="err" id="mk-err" role="alert"></span><p class="consent">بإرسال الطلب توافق على استخدام بياناتك للتواصل معك بخصوص الانضمام، كما في <a href="privacy.html">سياسة الخصوصية</a>.</p></div>'+
-      '<div class="out" id="mk-out" hidden tabindex="-1"><div class="ok" hidden><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#ffd84a" stroke="currentColor" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>'+
+      '<div class="out" id="mk-out" hidden tabindex="-1"><div class="ok" hidden><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" fill="#c9d4f7" stroke="currentColor" stroke-width="2"/><path d="M9 17.5l5.5 5.5L25 12" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>'+
         '<div><h3><span>'+esc(d.okTitle)+'</span></h3><p>رقم الطلب <span class="ref"></span>. '+esc(d.okText)+'</p></div></div>'+
         '<div class="fb"><p class="note warn" hidden></p><label for="mk-text">طلب الانضمام جاهز للإرسال</label><textarea id="mk-text" readonly></textarea>'+
         '<div class="row">'+(hasWA?'<a class="btn wa" id="mk-wa" href="#" target="_blank" rel="noopener">إرسال بالواتساب</a>':'')+'<button type="button" class="btn line" data-copy="mk-text">نسخ الطلب</button><span class="done" aria-live="polite"></span></div></div></div>'+
     '</form></div></section>';
   }
 };
+/* خانات نموذج الانضمام من «تعديل الصفحة الأساسية» */
+function jOpts(f){return String(f.options||"").split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean).slice(0,12)}
+function joinFieldsHTML(d){
+  return WaraqContent.joinFields(d).filter(function(f){return f&&!f.hidden&&f.label}).map(function(f,n){
+    var id="mk-f"+n, req=f.required?' required':'', ph=f.placeholder?' placeholder="'+esc(f.placeholder)+'"':'', lab=esc(f.label)+(f.required?'':' <small>(اختياري)</small>');
+    if(f.type==="checks"||f.type==="radio"){
+      var ty=f.type==="checks"?"checkbox":"radio";
+      return '<fieldset class="full" data-jf="'+n+'"><legend>'+lab+'</legend><div class="picks" id="'+id+'">'+jOpts(f).map(function(o,k){return '<label for="'+id+'-'+k+'"><input type="'+ty+'" name="'+id+'" id="'+id+'-'+k+'" value="'+esc(o)+'">'+esc(o)+'</label>'}).join("")+'</div></fieldset>';
+    }
+    if(f.type==="area")return '<div class="full" data-jf="'+n+'"><label for="'+id+'">'+lab+'</label><textarea id="'+id+'" maxlength="1500"'+ph+req+'></textarea></div>';
+    var tel=f.type==="tel", num=f.type==="number", ltr=tel||f.key==="handle";
+    return '<div data-jf="'+n+'"><label for="'+id+'">'+lab+'</label><input type="text" id="'+id+'"'+(ltr?' dir="ltr"':'')+(tel?' inputmode="tel" autocomplete="tel"':num?' inputmode="numeric"':f.key==="name"?' autocomplete="name"':'')+' maxlength="'+(tel?20:num?40:200)+'"'+ph+req+'></div>';
+  }).join("");
+}
 var whoOpts=null;
 function whoPublisher(){return whoOpts&&whoOpts[1]||"دار نشر"}
 
@@ -131,7 +137,7 @@ function render(content){
   var reqSec=secs.filter(function(s){return s.type==="request"})[0];
   var html='<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>'+
     '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><img class="logo" src="img/wordmark-blue.png" alt="'+esc(C.brand.name)+'" width="56" height="46"><span>'+esc(C.brand.tagline)+'</span></a>'+
-    '<a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
+    '<span class="beta">إصدار تجريبي</span><a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
     vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(safeUrl(l.url))+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
     navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+
     '<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
@@ -225,18 +231,22 @@ document.addEventListener("submit",function(e){
   e.preventDefault(); if(PREVIEW)return;
   var form=e.target;$("mk-err").textContent="";each(form.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});
   if(val("mk-web"))return showOut(true,"------");
-  var name=val("mk-name"),handle=val("mk-handle"),plat=checked("mk-plat"),contact=val("mk-contact");
-  if(!name)return fail("mk-name","اكتب اسمك.");
-  if(!handle)return fail("mk-handle","اكتب اسم حسابك.");
-  if(contact){var dg=digits(contact);if(dg.length<9||dg.length>15)return fail("mk-contact","رقم الجوال غير صحيح. اكتبه مثل 05xxxxxxxx أو اتركه فارغًا.")}
-  if(!plat.length){fail(null,"اختر منصة واحدة على الأقل.");$("pl-1").focus();return}
-  var d={name:name,handle:handle,phone:digits(contact).slice(0,20),platforms:plat,genre:val("mk-genre"),views:val("mk-views"),price:val("mk-price"),license:checked("mk-lic").join("")};
-  var t=["طلب انضمام لشبكة مسوقي وكالة "+C.brand.name,"","الاسم: "+name,"الحساب: "+handle,"المنصات: "+plat.join("، ")];
-  if(contact)t.push("الجوال: "+contact);
-  if(d.genre)t.push("نوع الكتب: "+d.genre);
-  if(d.views)t.push("متوسط المشاهدات: "+d.views);
-  if(d.price)t.push("السعر للمقطع: "+d.price+" ريال");
-  if(d.license)t.push("رخصة موثوق: "+d.license);
+  var d={answers:[]}, t=["طلب انضمام لشبكة مسوقي وكالة "+C.brand.name,""], bad=null, KEYS={name:1,handle:1,phone:1,genre:1,platforms:1,views:1,price:1,license:1};
+  WaraqContent.joinFields(C.sections.filter(function(s){return s.type==="join"})[0].data).filter(function(f){return f&&!f.hidden&&f.label}).some(function(f,n){
+    var id="mk-f"+n, v, shown;
+    if(f.type==="checks"||f.type==="radio"){v=checked(id);shown=v.join("، ");if(f.required&&!v.length){bad=[id+"-0","اختر من «"+f.label+"»."];return true}}
+    else{v=val(id);shown=v;if(f.required&&!v){bad=[id,"اكتب "+f.label.replace(/\s*\(.*$/,"")+"."];return true}
+      if(v&&f.type==="tel"){var dg=digits(v);if(dg.length<9||dg.length>15){bad=[id,"رقم الجوال غير صحيح. اكتبه مثل 05xxxxxxxx"+(f.required?".":" أو اتركه فارغًا.")];return true}}}
+    if(!shown)return false;
+    t.push(f.label+": "+shown);
+    if(f.key&&KEYS[f.key]&&!d.hasOwnProperty(f.key))d[f.key]=f.key==="platforms"?(Array.isArray(v)?v:[v]).slice(0,10):f.key==="phone"?digits(v).slice(0,20):String(shown).slice(0,f.key==="genre"?200:f.key==="name"||f.key==="handle"?120:40);
+    else d.answers.push({l:String(f.label).slice(0,120),v:String(shown).slice(0,1500)});
+    return false;
+  });
+  if(bad)return fail(bad[0],bad[1]);
+  if(!d.name||!d.handle)return fail(null,"اكتب اسمك وحسابك.");
+  if(!d.answers.length)delete d.answers; else d.answers=d.answers.slice(0,20);
+  var name=d.name;
   if(!hasDB)return showOut(false,"",t);
   var btn=$("mk-go");busy(btn,true);
   var okd=function(ref){busy(btn,false);form.reset();showOut(true,ref.id.slice(0,6).toUpperCase())};
