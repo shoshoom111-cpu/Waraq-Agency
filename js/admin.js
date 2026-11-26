@@ -1012,9 +1012,28 @@ $("team-save").addEventListener("click", async () => {
   catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); } finally { $("team-save").disabled = false; }
 });
 const NOTIFY = F.doc(db, "siteSettings", "notify");
+/* إقفال الموقع مؤقتًا: siteSettings/site { closed, msg } — الموقع يقرأه ويعرض صفحة الإقفال للزوار */
+const SITE = F.doc(db, "siteSettings", "site");
+let CLOSED = { closed: false, msg: "" };
+function drawClosed() {
+  $("cl-btn").textContent = CLOSED.closed ? "افتحي الموقع للزوار" : "اقفلي الموقع مؤقتًا";
+  $("cl-btn").className = CLOSED.closed ? "btn sm" : "btn line sm";
+  $("cl-state").textContent = CLOSED.closed ? "مقفل الحين" : "مفتوح"; $("cl-state").dataset.s = CLOSED.closed ? "rejected" : "approved";
+  if (document.activeElement !== $("cl-msg")) $("cl-msg").value = CLOSED.msg || "";
+}
+async function loadClosed() { try { const s = await F.getDoc(SITE); CLOSED = s.exists() ? { closed: !!s.data().closed, msg: s.data().msg || "" } : { closed: false, msg: "" }; } catch {} drawClosed(); }
+$("cl-btn").addEventListener("click", async (e) => {
+  const next = !CLOSED.closed, b = e.currentTarget, m = $("cl-msgbox");
+  if (next && !arm(b, "اضغطي مرة ثانية للتأكيد: الزوار بيشوفون «الموقع مغلق مؤقتًا» لين تفتحينه.")) return;
+  b.disabled = true; m.textContent = "";
+  const val = { closed: next, msg: $("cl-msg").value.trim().slice(0, 300), updatedAt: F.serverTimestamp() };
+  try { await F.setDoc(SITE, val); CLOSED = { closed: next, msg: val.msg }; drawClosed(); m.className = "saved"; m.textContent = next ? "انقفل الموقع للزوار." : "انفتح الموقع للزوار."; }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); }
+  finally { b.disabled = false; }
+});
 const okEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const nmsg = (t, bad) => { $("ntf-msg").textContent = t; $("ntf-msg").className = "saved" + (bad ? " err" : ""); };
-async function loadSettings() { try { const s = await F.getDoc(NOTIFY), d = s.exists() ? s.data() : {}; $("ntf").value = d.email || ""; $("wa-phone").value = d.waPhone || ""; $("wa-key").value = d.waKey || ""; } catch {} }
+async function loadSettings() { loadClosed(); try { const s = await F.getDoc(NOTIFY), d = s.exists() ? s.data() : {}; $("ntf").value = d.email || ""; $("wa-phone").value = d.waPhone || ""; $("wa-key").value = d.waKey || ""; } catch {} }
 /* WhatsApp alerts via CallMeBot: the request pages send a GET to this endpoint */
 const waDigits = (v) => String(v || "").replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/\D/g, "").replace(/^00/, "").replace(/^05(\d{8})$/, "9665$1");
 const wmsg = (t, bad) => { $("wa-msg").textContent = t; $("wa-msg").className = "saved" + (bad ? " err" : ""); };

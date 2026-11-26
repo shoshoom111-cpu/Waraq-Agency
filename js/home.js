@@ -130,13 +130,13 @@ function render(content){
   var navs=secs.filter(function(s){return s.nav});
   var reqSec=secs.filter(function(s){return s.type==="request"})[0];
   var html='<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>'+
-    '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span></a>'+
+    '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><img class="logo" src="img/wordmark-blue.png" alt="'+esc(C.brand.name)+'" width="56" height="46"><span>'+esc(C.brand.tagline)+'</span></a>'+
     '<a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
     vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(safeUrl(l.url))+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
     navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+
     '<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
     '<main id="top">'+C.sections.map(function(s,i){return s.hidden||!R[s.type]?"":R[s.type](s,i,ctx)}).join("")+'</main>'+
-    '<div class="wrap" data-sec="brand"><footer><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span>'+socials()+
+    '<div class="wrap" data-sec="brand"><footer><img src="img/mark-64.png" alt="" width="40" height="40" style="display:block"><b>'+esc(C.brand.name)+'</b><span>'+esc(C.brand.tagline)+'</span>'+socials()+
     (C.brand.handle?'<span class="handle">'+esc(C.brand.handle)+'</span>':'')+(C.brand.domain?'<span class="handle">'+esc(C.brand.domain)+'</span>':'')+
     (C.brand.year?'<span>© '+esc(C.brand.year)+'</span>':'')+'</footer></div>';
   var y=window.scrollY;

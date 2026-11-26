@@ -72,4 +72,28 @@
     draftId = null; last = ""; started = false;
   }
   window.WaraqTrack = { visitor: vid, draft: draft, done: done };
+
+  /* الموقع مقفل مؤقتًا من لوحة الوكالة */
+  if (FB.projectId && FB.apiKey && !/[?&]preview=1/.test(location.search) && window.parent === window) {
+    fetch("https://firestore.googleapis.com/v1/" + BASE + "siteSettings/site?key=" + encodeURIComponent(FB.apiKey))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var f = (d && d.fields) || {}, closed = !!(f.closed && f.closed.booleanValue), msg = f.msg && f.msg.stringValue || "";
+        if (!closed) return;
+        if (staff) {
+          var bar = document.createElement("div"); bar.setAttribute("role", "status");
+          bar.style.cssText = "position:sticky;top:0;z-index:9999;background:#16223a;color:#fff;text-align:center;padding:8px 12px;font-size:14px;font-family:inherit";
+          bar.textContent = "الموقع مقفل للزوار الحين. تشوفينه لأنك فتحتي لوحة التحكم من هذا الجهاز. تفتحينه من الإعدادات.";
+          document.body.insertBefore(bar, document.body.firstChild); return;
+        }
+        var page = document.createElement("div"); page.id = "closed-page"; page.setAttribute("role", "main");
+        page.style.cssText = "position:fixed;inset:0;z-index:99999;background:#f3f5f1;color:#16223a;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:12px";
+        page.innerHTML = '<img src="img/wordmark-blue.png" alt="وكالة رحلة ورق للدعاية والإعلان" style="height:110px;width:auto">'
+          + '<h1 style="font-family:\'Noto Kufi Arabic\',Tahoma,sans-serif;font-weight:800;font-size:34px;margin:0;background:linear-gradient(#ffd84a,#ffd84a) no-repeat right bottom .1em/100% .42em">الموقع مغلق مؤقتًا</h1><p id="closed-msg" style="font-size:17px;color:#56637a;max-width:520px;margin:0"></p>';
+        document.body.appendChild(page);
+        document.getElementById("closed-msg").textContent = msg || "نرجع لكم قريب إن شاء الله.";
+        document.documentElement.style.overflow = "hidden";
+        document.title = "الموقع مغلق مؤقتًا — وكالة رحلة ورق للدعاية والإعلان";
+      }).catch(function () {});
+  }
 })();

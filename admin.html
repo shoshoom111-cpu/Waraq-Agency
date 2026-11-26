@@ -6,7 +6,9 @@
 <meta name="robots" content="noindex,nofollow">
 <title>إدارة ورق</title>
 <meta name="theme-color" content="#f3f5f1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2316223a'/%3E%3Crect x='10' y='38' width='44' height='12' fill='%23ffd84a'/%3E%3Ctext x='32' y='44' font-family='Tahoma' font-weight='700' font-size='34' fill='%23fff' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="img/mark-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/mark-192.png">
+<link rel="apple-touch-icon" href="img/mark-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;800&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
@@ -243,12 +245,17 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 @media (min-width:981px){.prev .close{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .agr-keys{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.agr-keys button{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink);padding:2px 9px;cursor:pointer}.agr-keys button:hover{border-color:var(--ink)}.agr-text{font-size:.9rem;line-height:1.8;min-height:420px}
+
+/* شعار رحلة ورق في رأس الصفحة (ألوان الموقع ما تغيّرت) */
+.brand{align-items:center}
+.brand .logo{display:block;height:46px;width:auto}
+.brand .logo-mark{display:block;height:40px;width:40px}
 </style>
 </head>
 <body>
 <div class="wrap" id="frame">
   <header class="mast">
-    <a class="brand" href="index.html"><b>ورق</b><span>إدارة الموقع</span></a>
+    <a class="brand" href="index.html"><img class="logo-mark" src="img/mark-64.png" alt="رحلة ورق" width="40" height="40"><span>إدارة الموقع</span></a>
     <div class="me" id="me" hidden>
       <a class="btn line sm" target="_blank" rel="noopener" href="https://book-campaigns.web.app/admin.html">لوحة المسوقين</a>
       <a class="btn line sm" target="_blank" rel="noopener" href="index.html">فتح الموقع</a>
@@ -327,6 +334,12 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
   </main>
 
   <main id="v-settings" class="view" hidden>
+    <section class="panelbox" aria-labelledby="cl-h">
+      <h2 id="cl-h"><span class="hlx">إقفال الموقع مؤقتًا</span> <span class="pill" id="cl-state"></span></h2>
+      <p class="hint">لما تقفلين الموقع، الزوار يشوفون صفحة «الموقع مغلق مؤقتًا» بدل الصفحة الأساسية وصفحة الطلب. أنتِ (وأي جهاز فتح لوحة التحكم) تشوفين الموقع عادي مع شريط ينبّهك إنه مقفل.</p>
+      <div class="field"><label for="cl-msg">رسالة للزوار <small>(اختياري)</small></label><input id="cl-msg" type="text" maxlength="300" placeholder="نرجع لكم قريب إن شاء الله."></div>
+      <div class="acts"><button class="btn sm" type="button" id="cl-btn">…</button><span class="saved" id="cl-msgbox" role="status"></span></div>
+    </section>
     <section class="panelbox" aria-labelledby="set-h">
       <h2 id="set-h"><span class="hlx">تنبيهات الطلبات بالإيميل</span></h2>
       <div class="field"><label for="ntf">بريد التنبيهات</label><input id="ntf" type="email" dir="ltr" maxlength="120" placeholder="name@example.com"></div>
@@ -386,9 +399,9 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=202611260908"></script>
-<script src="js/content.js?v=202611260908"></script>
-<script src="js/agreement-default.js?v=202611260908"></script>
-<script type="module" src="js/admin.js?v=202611260908"></script>
+<script src="config.js?v=202611260936"></script>
+<script src="js/content.js?v=202611260936"></script>
+<script src="js/agreement-default.js?v=202611260936"></script>
+<script type="module" src="js/admin.js?v=202611260936"></script>
 </body>
 </html>

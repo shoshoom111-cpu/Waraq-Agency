@@ -9,10 +9,13 @@
 <meta property="og:title" content="اطلب خدمة · رحلة ورق">
 <meta property="og:url" content="https://waraq-agency.com/request.html">
 <meta property="og:description" content="سجّل طلبك لدى وكالة رحلة ورق للدعاية والإعلان: تسويق كتابك عن طريق مسوقين، حملات جاهزة، ومعارض الكتاب.">
+<meta property="og:image" content="https://waraq-agency.com/img/mark-512.png">
 <meta property="og:locale" content="ar_SA">
 <meta name="description" content="سجّل طلبك لدى وكالة رحلة ورق للدعاية والإعلان: بياناتك، كتابك وحالته، والخدمة اللي تحتاجها.">
 <meta name="theme-color" content="#f3f5f1">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2316223a'/%3E%3Crect x='10' y='38' width='44' height='12' fill='%23ffd84a'/%3E%3Ctext x='32' y='44' font-family='Tahoma' font-weight='700' font-size='34' fill='%23fff' text-anchor='middle'%3E%D9%88%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="img/mark-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/mark-192.png">
+<link rel="apple-touch-icon" href="img/mark-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;800&family=Noto+Naskh+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
@@ -190,12 +193,18 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   @keyframes condIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* شعار رحلة ورق في رأس الصفحة (ألوان الموقع ما تغيّرت) */
+.brand{align-items:center}
+.brand .logo{display:block;height:56px;width:auto}
+@media (max-width:600px){.brand .logo{height:46px}}
+.brand .logo-mark{display:block;height:40px;width:40px}
 </style>
 </head>
 <body class="loading">
 <div class="wrap">
   <header class="mast">
-    <a class="brand" href="index.html"><b>ورق</b><span>وكالة تسويق للكتب</span></a>
+    <a class="brand" href="index.html"><img class="logo" src="img/wordmark-blue.png" alt="رحلة ورق" width="56" height="46"><span>وكالة تسويق للكتب</span></a>
     <a class="back" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>الرجوع للموقع</a>
   </header>
 
@@ -238,9 +247,9 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   </div>
 </div>
 <noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
-<script src="config.js?v=202611260908"></script>
-<script src="js/content.js?v=202611260908"></script>
-<script src="js/visit.js?v=202611260908"></script>
-<script src="js/request.js?v=202611260908"></script>
+<script src="config.js?v=202611260936"></script>
+<script src="js/content.js?v=202611260936"></script>
+<script src="js/visit.js?v=202611260936"></script>
+<script src="js/request.js?v=202611260936"></script>
 </body>
 </html>
