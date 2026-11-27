@@ -25,7 +25,7 @@ if (!(FBC.apiKey && FBC.projectId && FBC.appId)) { gate("g-config"); throw new E
 
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 const [{ initializeApp }, A, F] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")]);
-const app = initializeApp(FBC);
+const app = window.WaraqAC ? await window.WaraqAC.app() : initializeApp(FBC);   // نفس التطبيق مع حماية App Check
 const auth = A.getAuth(app); auth.languageCode = "ar";
 const db = F.getFirestore(app);
 

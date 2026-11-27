@@ -307,7 +307,7 @@ document.addEventListener("change",function(e){var g=e.target.closest&&e.target.
 var dbReady=null;
 function db(){
   if(!dbReady){
-    dbReady=Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js")]).then(function(m){return {fs:m[1],db:m[1].getFirestore(m[0].initializeApp(FB))}});
+    dbReady=Promise.all([window.WaraqAC?WaraqAC.app():import(SDK+"firebase-app.js").then(function(a){return a.initializeApp(FB)}),import(SDK+"firebase-firestore.js")]).then(function(m){return {fs:m[1],db:m[1].getFirestore(m[0])}});
     dbReady.catch(function(){dbReady=null});
   }
   return dbReady;

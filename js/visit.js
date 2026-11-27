@@ -35,7 +35,8 @@
     var w = { update: { name: BASE + col + "/" + id, fields: fields }, updateTransforms: (timeFields || []).map(function (f) { return { fieldPath: f, setToServerValue: "REQUEST_TIME" }; }) };
     if (mustBeNew) w.currentDocument = { exists: false };
     else w.updateMask = { fieldPaths: Object.keys(fields) };
-    return fetch(URL_, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ writes: [w] }) }).catch(function () { return null; });
+    var hd = window.WaraqAC ? WaraqAC.headers({ "Content-Type": "application/json" }) : Promise.resolve({ "Content-Type": "application/json" });
+    return hd.then(function (h) { return fetch(URL_, { method: "POST", keepalive: true, headers: h, body: JSON.stringify({ writes: [w] }) }); }).catch(function () { return null; });
   }
   function rid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
 
@@ -131,7 +132,7 @@
 
   /* الموقع مقفل مؤقتًا من لوحة الوكالة */
   if (FB.projectId && FB.apiKey && !/[?&]preview=1/.test(location.search) && window.parent === window) {
-    fetch("https://firestore.googleapis.com/v1/" + BASE + "siteSettings/site?key=" + encodeURIComponent(FB.apiKey))
+    (window.WaraqAC ? WaraqAC.headers({}) : Promise.resolve({})).then(function (h) { return fetch("https://firestore.googleapis.com/v1/" + BASE + "siteSettings/site?key=" + encodeURIComponent(FB.apiKey), { headers: h }); })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         var f = (d && d.fields) || {}, closed = !!(f.closed && f.closed.booleanValue), msg = f.msg && f.msg.stringValue || "";

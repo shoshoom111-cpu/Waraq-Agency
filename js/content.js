@@ -135,7 +135,7 @@ function writeCache(id,v){try{localStorage.setItem(cacheKey(id),JSON.stringify(v
 function fetchContent(id){
   if(!CFG.apiKey||!CFG.projectId)return Promise.resolve(null);
   var url="https://firestore.googleapis.com/v1/projects/"+CFG.projectId+"/databases/(default)/documents/siteContent/"+id+"?key="+CFG.apiKey;
-  return fetch(url,{cache:"no-store"}).then(function(r){
+  return (window.WaraqAC?WaraqAC.headers({}):Promise.resolve({})).then(function(h){return fetch(url,{cache:"no-store",headers:h})}).then(function(r){
     if(r.status===404)return null;
     if(!r.ok)throw new Error("HTTP "+r.status);
     return r.json().then(function(d){

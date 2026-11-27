@@ -6,6 +6,9 @@ window.WARAQ = {
 
   // الطلبات تُحفظ في قاعدة بيانات لوحة المسوقين (مشروع book-campaigns)،
   // وتظهر في تبويب «الطلبات» في اللوحة: https://book-campaigns.web.app/admin.html
+  // مفتاح reCAPTCHA العام لحماية App Check (مو سري)
+  appCheckKey: "6LfeGTUuAAAAAFBtOssabYYkJ7vN1V12Od1dw-ur",
+
   firebase: {
     apiKey: "AIzaSyBp3h0ovlP8jUXPFwHKujeZ0g1vBBkdIVw",
     authDomain: "book-campaigns.firebaseapp.com",
