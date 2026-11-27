@@ -650,7 +650,11 @@ function inputHTML(f, base, obj) {
     return `<div class="fld"><label>${esc(f.l)} <small>(نفس خدمات حاسبة الحملات. الرقم = الكمية، فاضي = مو فيها. أي تغيير هنا يتغيّر في الحاسبة وسعرها)</small></label>${old}
       <div class="svcpick" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 14px;max-height:260px;overflow:auto;border:1px solid var(--rule,#ddd);padding:8px 10px">` +
       CAT.map(s => `<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.9rem"><span>${esc(s.name)}</span><input type="number" min="0" max="999" step="1" inputmode="numeric" style="width:64px" data-svc="${esc(base)}" data-sid="${esc(s.id)}" value="${q[s.id] ? esc(q[s.id]) : ""}" placeholder="0"></label>`).join("") +
-      `</div><p class="hint" data-svcprev="${esc(base)}" style="white-space:pre-line">تظهر في البطاقة:\n${esc(obj && obj.items || "—")}</p></div>`;
+      `</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:end;margin-top:8px">
+        <label style="flex:1 1 200px;font-size:.88rem">ميزة جديدة مو في القائمة <small>(تنضاف خدمة في «٣. الخدمات» بالحاسبة)</small><input type="text" maxlength="120" data-svcnewname="${esc(base)}" placeholder="مثال: بودكاست مع المؤلف"></label>
+        <label style="width:110px;font-size:.88rem">سعر البيع<input type="number" min="0" step="1" inputmode="numeric" data-svcnewfee="${esc(base)}" placeholder="0"></label>
+        <button class="btn sm" type="button" data-svcadd="${esc(base)}">أضيفيها</button></div>` +
+      `<p class="hint" data-svcprev="${esc(base)}" style="white-space:pre-line">تظهر في البطاقة:\n${esc(obj && obj.items || "—")}</p></div>`;
   }
   if (f.t === "bool") return `<label class="chk"><input type="checkbox" data-p="${p}"${v ? " checked" : ""}>${esc(f.l)}</label>`;
   if (f.t === "area") return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><textarea id="${id}" data-p="${p}" rows="${f.rows || 3}">${esc(v)}</textarea></div>`;
@@ -880,6 +884,22 @@ panel.addEventListener("change", (e) => {
     const f = { ...def, id: uid("f-"), hidden: false }; CUR.data.parts[+el.dataset.core].fields.push(f);
     OPEN.request["fld:" + f.id] = true; changed(true);
   }
+});
+/* ميزة جديدة في بطاقة حملة جاهزة: تنضاف للبطاقة بكمية ١، والحاسبة تضيفها خدمة في «٣. الخدمات» أول ما تشوفها (svcNew) */
+panel.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-svcadd]"); if (!b || !CUR || !CAT) return;
+  e.preventDefault();
+  const base = b.dataset.svcadd, nameEl = panel.querySelector(`[data-svcnewname="${CSS.escape(base)}"]`), feeEl = panel.querySelector(`[data-svcnewfee="${CSS.escape(base)}"]`);
+  const name = (nameEl && nameEl.value || "").replace(/\s+/g, " ").trim().slice(0, 120); if (!name) { if (nameEl) nameEl.focus(); return; }
+  const c = getP(CUR.data, base); if (!c) return;
+  pushUndo();
+  const q = { ...(c.svc && typeof c.svc === "object" ? c.svc : {}) };
+  const same = CAT.find(s => String(s.name).trim() === name);   // موجودة بنفس الاسم: تنحط بس
+  let id = same ? same.id : "c" + Date.now();
+  if (!same) { c.svcNew = { ...(c.svcNew || {}), [id]: { name, fee: Math.max(0, Math.floor(+(feeEl && feeEl.value) || 0)) } }; CAT.push({ id, name }); }
+  q[id] = q[id] || 1; c.svc = q; c.items = svcText(q);
+  changed(true);
+  toast(same ? `«${name}» موجودة في الحاسبة، وانحطّت في الحملة.` : `انضافت «${name}». لما تحفظين وتفتحين الحاسبة تنضاف في «٣. الخدمات»${feeEl && +feeEl.value ? "" : "، وحطي سعرها هناك"}.`);
 });
 panel.addEventListener("click", (e) => {
   const b = e.target.closest("[data-op]"); if (!b || !CUR) return;
