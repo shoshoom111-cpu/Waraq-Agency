@@ -88,7 +88,7 @@
       + ".sup-dlg input,.sup-dlg textarea{font:inherit;font-size:.95rem;border:1.5px solid var(--rule,#cfd6dc);background:var(--paper,#f3f5f1);padding:8px 10px;color:inherit;width:100%;box-sizing:border-box}"
       + ".sup-dlg input:focus,.sup-dlg textarea:focus{outline:0;border-color:var(--brand,#0F30B3);background:#fff}.sup-dlg textarea{min-height:110px;resize:vertical}"
       + ".sup-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.sup-x{margin-inline-start:auto;background:none;border:1.5px solid var(--rule,#cfd6dc);padding:6px 12px;cursor:pointer;font:inherit}"
-      + ".sup-ok{color:var(--ok,#2f7d4f);font-weight:700}.sup-err{color:var(--bad,#a3392b)}.sup-toast{position:fixed;bottom:70px;left:18px;z-index:9001;background:var(--ok,#2f7d4f);color:#fff;font-family:var(--display),Tahoma,sans-serif;font-weight:700;font-size:.9rem;padding:10px 16px;box-shadow:0 10px 24px -10px rgba(0,0,0,.45);transition:opacity .4s}.sup-toast.out{opacity:0}.sup-hp{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.sup-dlg{overflow-x:hidden;max-height:calc(100dvh - 32px)}@media (max-width:600px){.sup-btn{bottom:12px;left:12px;padding:9px 13px;font-size:.86rem}}";
+      + ".sup-ok{color:var(--ok,#2f7d4f);font-weight:700}.sup-err{color:var(--bad,#a3392b)}.sup-toast{position:fixed;bottom:70px;left:18px;z-index:9001;background:var(--ok,#2f7d4f);color:#fff;font-family:var(--display),Tahoma,sans-serif;font-weight:700;font-size:.9rem;padding:10px 16px;box-shadow:0 10px 24px -10px rgba(0,0,0,.45);transition:opacity .4s}.sup-toast.out{opacity:0}.sup-hp{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.sup-dlg{overflow-x:hidden;max-height:calc(100dvh - 32px)}@media (max-width:600px){.sup-btn{bottom:12px;left:12px;padding:9px 13px;font-size:.86rem}body{padding-bottom:64px}}";
     var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
     var btn = document.createElement("button"); btn.type = "button"; btn.className = "sup-btn"; btn.setAttribute("aria-haspopup", "dialog");
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>دعم فني';
@@ -149,6 +149,7 @@
         document.body.appendChild(page);
         document.getElementById("closed-msg").textContent = msg || "نرجع لكم قريب إن شاء الله.";
         document.documentElement.style.overflow = "hidden";
+        Array.prototype.forEach.call(document.body.children, function (el) { if (el !== page && el.tagName !== "SCRIPT" && el.tagName !== "STYLE") el.setAttribute("inert", ""); });
         document.title = "الموقع مغلق مؤقتًا — وكالة رحلة ورق للدعاية والإعلان";
       }).catch(function () {});
   }

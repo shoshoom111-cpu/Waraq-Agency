@@ -314,7 +314,7 @@ function db(){
 }
 if(hasDB&&!PREVIEW)document.addEventListener("focusin",function f(){document.removeEventListener("focusin",f);db().catch(function(){})});
 /* تنبيه واتساب لجوال الوكالة عن طريق CallMeBot (الرقم والمفتاح من الإعدادات) */
-function waSend(d,subject,ls){
+function waSend(d,subject,ls){return;/* انشال: مفتاح CallMeBot كان لازم يكون مقروء للعامة */
   var ph=String(d.waPhone||"").replace(/\D/g,""), key=String(d.waKey||"").trim(); if(ph.length<10||!key)return;
   var text=(subject+"\n\n"+ls.filter(function(l,i){return i>1||l}).join("\n")).slice(0,1500);
   try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}

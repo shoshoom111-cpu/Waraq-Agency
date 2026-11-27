@@ -147,6 +147,25 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 .pill[data-s="new"]{background:var(--s-new);border-color:var(--ink)}
 .pill[data-s="approved"]{background:var(--s-ok)}
 .pill[data-s="rejected"]{background:var(--s-no)}
+.pill[data-s="pricing"]{background:#dfe6fb;border-color:var(--brand,#0F30B3)}
+.pill[data-s="prep"]{background:#fff1c2}
+.pill[data-s="done"]{background:var(--s-ok);border-color:var(--ok)}
+.pill[data-s="refused"]{background:var(--s-no)}
+/* مراحل الطلب */
+.stepper{list-style:none;margin:0 0 16px;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;counter-reset:s}
+.stepper li{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;font-size:.78rem;color:var(--muted)}
+.stepper li::before{content:"";position:absolute;top:13px;right:50%;width:100%;height:2px;background:var(--rule);z-index:0}
+.stepper li:first-child::before{display:none}
+.stepper li.done::before,.stepper li.cur::before{background:var(--brand,#0F30B3)}
+.stepper i{position:relative;z-index:1;width:28px;height:28px;display:grid;place-items:center;border:2px solid var(--rule);background:var(--sheet);font-style:normal;font-family:var(--display);font-weight:700;font-size:.8rem}
+.stepper li.done i{background:var(--brand,#0F30B3);border-color:var(--brand,#0F30B3);color:#fff}
+.stepper li.cur i{border-color:var(--brand,#0F30B3);box-shadow:0 0 0 4px var(--mark)}
+.stepper li.cur{color:var(--ink);font-weight:700}
+.stepper li.stop i{background:var(--bad);border-color:var(--bad);color:#fff}
+.stepper li.stop{color:var(--bad);font-weight:700}
+.stepper b{font-family:var(--display);font-weight:700;line-height:1.4}
+.stepper small{font-size:.7rem}
+@media (max-width:600px){.stepper b{font-size:.68rem}.stepper small{display:none}}
 .detail{background:var(--sheet);padding:4px 10px 22px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px 32px}
 .detail dl{margin:0;display:grid;grid-template-columns:8.5rem 1fr;gap:6px 14px;align-content:start}
 .detail dt{font-family:var(--display);font-size:.82rem;color:var(--muted);padding-top:2px}
@@ -354,15 +373,7 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="acts"><button class="btn sm" type="button" id="ntf-save">حفظ</button><button class="btn line sm" type="button" id="ntf-test">إرسال إيميل تجربة</button><span class="saved" id="ntf-msg" aria-live="polite"></span></div>
       <p class="hint"><b>أول مرة:</b> بعد الحفظ اضغطي «إرسال إيميل تجربة». يوصلك إيميل من FormSubmit فيه زر <b dir="ltr">Activate Form</b>، اضغطيه مرة وحدة وبعدها تبدأ التنبيهات. شيّكي على البريد المزعج.</p>
     </section>
-    <section class="panelbox" aria-labelledby="wa-h">
-      <h2 id="wa-h"><span class="hlx">تنبيهات الطلبات بالواتساب</span></h2>
-      <p class="hint"><b>التفعيل (مرة وحدة من جوالك):</b> افتحي <a href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noopener">صفحة CallMeBot</a>، واحفظي رقمهم المكتوب فيها بجوالك، وأرسلي له من واتسابك الرسالة اللي يطلبونها (<span dir="ltr">I allow callmebot to send me messages</span>). يردون عليك برسالة فيها <b dir="ltr">apikey</b>. اكتبي رقمك والمفتاح هنا.</p>
-      <div class="field"><label for="wa-phone">رقم جوالك (اللي فعّلتي منه)</label><input id="wa-phone" type="tel" dir="ltr" maxlength="20" placeholder="9665XXXXXXXX"></div>
-      <div class="field"><label for="wa-key">المفتاح (apikey)</label><input id="wa-key" type="text" dir="ltr" maxlength="40" autocomplete="off" placeholder="123456"></div>
-      <p class="hint">كل طلب جديد (خدمة أو انضمام مسوق) توصلك عنه رسالة واتساب فيها معلومات الطلب. امسحي الخانتين واحفظي لإيقافها.</p>
-      <div class="acts"><button class="btn sm" type="button" id="wa-save">حفظ</button><button class="btn line sm" type="button" id="wa-test">إرسال رسالة تجربة</button><span class="saved" id="wa-msg" aria-live="polite"></span></div>
-      <p class="hint">تنبيه: المفتاح يكون موجود في كود الموقع. لو جتك رسائل مزعجة، اطلبي مفتاح جديد من CallMeBot وحطيه هنا.</p>
-    </section>
+    <!-- تنبيهات الواتساب (CallMeBot) انشالت: مفتاحها لازم يكون مقروء للعامة. التنبيهات بالإيميل بس. -->
     <section class="panelbox" aria-labelledby="tpl-h">
       <h2 id="tpl-h"><span class="hlx">رسائل الواتساب</span></h2>
       <p class="hint">الكلمات اللي بين { } تتبدّل تلقائيًا: <b>{الاسم}</b> اسم العميل، <b>{الكتاب}</b> عنوان الكتاب، <b>{الوكالة}</b> اسم الوكالة، <b>{الخدمات}</b> الخدمات المطلوبة. وفي رسالة المنفذ: <b>{المنفذ}</b> اسمه و<b>{التفاصيل}</b> الخدمة ووصفها ومعلومات الكتاب.</p>
@@ -406,9 +417,9 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=202611261523"></script>
-<script src="js/content.js?v=202611261523"></script>
-<script src="js/agreement-default.js?v=202611261523"></script>
-<script type="module" src="js/admin.js?v=202611261523"></script>
+<script src="config.js?v=202611271057"></script>
+<script src="js/content.js?v=202611271057"></script>
+<script src="js/agreement-default.js?v=202611271057"></script>
+<script type="module" src="js/admin.js?v=202611271057"></script>
 </body>
 </html>

@@ -113,6 +113,7 @@ var JOIN_FIELDS=[
 ];
 function joinFields(d){
   var f=Array.isArray(d&&d.fields)&&d.fields.length?d.fields:clone(JOIN_FIELDS);
+  f.forEach(function(x){if(x&&typeof x.options==="string")x.options=x.options.split("\\n").join("\n")});
   ["handle","name"].forEach(function(k){var x=f.filter(function(y){return y&&y.key===k})[0];if(!x){x=clone(JOIN_FIELDS.filter(function(y){return y.key===k})[0]);f.unshift(x)}x.hidden=false;x.required=true});
   return f;
 }

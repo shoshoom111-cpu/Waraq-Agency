@@ -111,8 +111,9 @@ var R={
 };
 /* خانات نموذج الانضمام من «تعديل الصفحة الأساسية» */
 function jOpts(f){return String(f.options||"").split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean).slice(0,12)}
+function joinList(d){return WaraqContent.joinFields(d).filter(function(f){return f&&!f.hidden&&f.label&&!((f.type==="checks"||f.type==="radio")&&!jOpts(f).length)})}
 function joinFieldsHTML(d){
-  return WaraqContent.joinFields(d).filter(function(f){return f&&!f.hidden&&f.label}).map(function(f,n){
+  return joinList(d).map(function(f,n){
     var id="mk-f"+n, req=f.required?' required':'', ph=f.placeholder?' placeholder="'+esc(f.placeholder)+'"':'', lab=esc(f.label)+(f.required?'':' <small>(اختياري)</small>');
     if(f.type==="checks"||f.type==="radio"){
       var ty=f.type==="checks"?"checkbox":"radio";
@@ -190,7 +191,7 @@ function db(){
   return dbReady;
 }
 /* تنبيه واتساب لجوال الوكالة عن طريق CallMeBot (الرقم والمفتاح من الإعدادات) */
-function waSend(d,subject,ls){
+function waSend(d,subject,ls){return;/* انشال: مفتاح CallMeBot كان لازم يكون مقروء للعامة */
   var ph=String(d.waPhone||"").replace(/\D/g,""), key=String(d.waKey||"").trim(); if(ph.length<10||!key)return;
   var text=(subject+"\n\n"+ls.filter(function(l,i){return i>1||l}).join("\n")).slice(0,1500);
   try{fetch("https://api.callmebot.com/whatsapp.php?phone=%2B"+ph+"&apikey="+encodeURIComponent(key)+"&text="+encodeURIComponent(text),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}
@@ -232,7 +233,7 @@ document.addEventListener("submit",function(e){
   var form=e.target;$("mk-err").textContent="";each(form.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});
   if(val("mk-web"))return showOut(true,"------");
   var d={answers:[]}, t=["طلب انضمام لشبكة مسوقي وكالة "+C.brand.name,""], bad=null, KEYS={name:1,handle:1,phone:1,genre:1,platforms:1,views:1,price:1,license:1};
-  WaraqContent.joinFields(C.sections.filter(function(s){return s.type==="join"})[0].data).filter(function(f){return f&&!f.hidden&&f.label}).some(function(f,n){
+  joinList(C.sections.filter(function(s){return s.type==="join"})[0].data).some(function(f,n){
     var id="mk-f"+n, v, shown;
     if(f.type==="checks"||f.type==="radio"){v=checked(id);shown=v.join("، ");if(f.required&&!v.length){bad=[id+"-0","اختر من «"+f.label+"»."];return true}}
     else{v=val(id);shown=v;if(f.required&&!v){bad=[id,"اكتب "+f.label.replace(/\s*\(.*$/,"")+"."];return true}
