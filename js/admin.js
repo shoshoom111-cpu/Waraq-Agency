@@ -607,13 +607,9 @@ const TYPES = {
     S("button", "زر الإرسال"), S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area")],
     make: () => WC.defaults("home").sections.find(s => s.type === "join").data }
 };
-const CARD = [S("label", "الوسم الصغير"), S("title", "اسم الحملة", "text", { title: true }), S("text", "الوصف"), S("svc", "الخدمات (هي مميزات البطاقة)", "svc"), S("pick", "تنختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" }), S("star", "تمييزها (الأكثر طلبًا)", "bool")];
-TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "a")] = L("a", "حملات التبويب الأول", CARD, { label: "", title: "حملة جديدة", text: "", items: "", svc: {}, pick: "", star: false }, "title");
-TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "b")] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", svc: {}, pick: "", star: false }, "title");
-/* قائمة الخدمات من حاسبة الحملات (calc/services). مميزات بطاقة الحملة الجاهزة = خدماتها وكمياتها، بنفس صياغة الحاسبة. */
-let CAT = null;
-const loadCat = () => F.getDoc(F.doc(db, "calc", "services")).then(s => { const l = s.exists() ? s.data().list : null; CAT = Array.isArray(l) && l.length ? l : null; }).catch(() => { CAT = null; });
-const svcText = q => (CAT || []).map(s => { const n = Math.floor(+((q || {})[s.id]) || 0); return n > 0 ? (n > 1 ? `${s.name} (${n})` : s.name) : ""; }).filter(Boolean).join("\n");
+const CARD = [S("label", "الوسم الصغير"), S("title", "اسم الحملة", "text", { title: true }), S("text", "الوصف"), S("items", "المميزات", "area", { hint: "كل سطر ميزة" }), S("pick", "تنختار في صفحة الطلب «وش تحتاج؟»", "ref", { src: "picks" }), S("star", "تمييزها (الأكثر طلبًا)", "bool")];
+TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "a")] = L("a", "حملات التبويب الأول", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
+TYPES.campaigns.fields[TYPES.campaigns.fields.findIndex(x => x.k === "b")] = L("b", "حملات التبويب الثاني", CARD, { label: "", title: "حملة جديدة", text: "", items: "", pick: "", star: false }, "title");
 const BRAND = [S("name", "اسم الوكالة", "text", { title: true }), S("tagline", "الوصف القصير"), S("cta", "زر «اطلب خدمة» في الأعلى"), S("whatsapp", "رقم الواتساب", "text", { hint: "بالصيغة الدولية مثل 9665XXXXXXXX. فاضي = أزرار الواتساب مخفية", ltr: true }),
   S("handle", "اسم الحساب", "text", { ltr: true }), S("domain", "الدومين", "text", { ltr: true }), S("year", "سنة الحقوق"),
   L("socials", "الحسابات", [S("name", "المنصة", "text", { title: true }), S("url", "الرابط", "text", { ltr: true })], { name: "منصة", url: "https://" }, "name"),
@@ -643,19 +639,6 @@ function inputHTML(f, base, obj) {
   const hint = f.hint ? ` <small>(${esc(f.hint)})</small>` : "";
   if (f.t === "list") return listHTML(f, p, v || []);
   if (f.t === "subs") return subsHTML(p, Array.isArray(v) ? v : []);
-  if (f.t === "svc") {
-    const q = obj && obj.svc && typeof obj.svc === "object" ? obj.svc : {}, ip = (base ? base + "." : "") + "items";
-    if (!CAT) return `<div class="fld"><label for="${id}">المميزات <small>(كل سطر ميزة. قائمة الخدمات تجي من حاسبة الحملات: افتحيها مرة وهي مسجّلة دخول عشان تنربط)</small></label><textarea id="${id}" data-p="${ip}" rows="3">${esc(obj ? obj.items || "" : "")}</textarea></div>`;
-    const old = obj && obj.items && !Object.keys(q).length ? `<p class="hint">المكتوب الحين: ${esc(obj.items).replace(/\n/g, "، ")}. اختاري الخدمات عشان تنربط بالحاسبة.</p>` : "";
-    return `<div class="fld"><label>${esc(f.l)} <small>(نفس خدمات حاسبة الحملات. الرقم = الكمية، فاضي = مو فيها. أي تغيير هنا يتغيّر في الحاسبة وسعرها)</small></label>${old}
-      <div class="svcpick" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 14px;max-height:260px;overflow:auto;border:1px solid var(--rule,#ddd);padding:8px 10px">` +
-      CAT.map(s => `<label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.9rem"><span>${esc(s.name)}</span><input type="number" min="0" max="999" step="1" inputmode="numeric" style="width:64px" data-svc="${esc(base)}" data-sid="${esc(s.id)}" value="${q[s.id] ? esc(q[s.id]) : ""}" placeholder="0"></label>`).join("") +
-      `</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:end;margin-top:8px">
-        <label style="flex:1 1 200px;font-size:.88rem">ميزة جديدة مو في القائمة <small>(تنضاف خدمة في «٣. الخدمات» بالحاسبة)</small><input type="text" maxlength="120" data-svcnewname="${esc(base)}" placeholder="مثال: بودكاست مع المؤلف"></label>
-        <label style="width:110px;font-size:.88rem">سعر البيع<input type="number" min="0" step="1" inputmode="numeric" data-svcnewfee="${esc(base)}" placeholder="0"></label>
-        <button class="btn sm" type="button" data-svcadd="${esc(base)}">أضيفيها</button></div>` +
-      `<p class="hint" data-svcprev="${esc(base)}" style="white-space:pre-line">تظهر في البطاقة:\n${esc(obj && obj.items || "—")}</p></div>`;
-  }
   if (f.t === "bool") return `<label class="chk"><input type="checkbox" data-p="${p}"${v ? " checked" : ""}>${esc(f.l)}</label>`;
   if (f.t === "area") return `<div class="fld"><label for="${id}">${esc(f.l)}${hint}</label><textarea id="${id}" data-p="${p}" rows="${f.rows || 3}">${esc(v)}</textarea></div>`;
   if (f.t === "ref") {
@@ -777,7 +760,7 @@ async function openEditor(id) {
   const E = ED[id]; CUR = E;
   $("ed-title").textContent = E.title; $("ed-note").value = "";
   panel.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
-  try { await Promise.all([loadContent("home"), loadContent("request"), loadCat()]); }
+  try { await Promise.all([loadContent("home"), loadContent("request")]); }
   catch (err) { panel.innerHTML = `<div class="empty"><h2>تعذّر التحميل</h2><p>${esc(err.code || err.message)}</p></div>`; return; }
   if (CUR !== E) return;
   $("ed-draft").innerHTML = E.draft ? `<div class="restore"><span>عندك تعديلات من قبل ما انحفظت على هذي الصفحة.</span><span class="acts"><button class="btn sm" type="button" id="dr-use">استرجاعها</button><button class="btn line sm" type="button" id="dr-drop">تجاهلها</button></span></div>` : "";
@@ -842,17 +825,7 @@ panel.addEventListener("toggle", (e) => {
   OPEN[CUR.id][d.dataset.k] = d.open; if (d.open) focusPreview(d);
 }, true);
 panel.addEventListener("input", (e) => {
-  const el = e.target, p = el.dataset.p;
-  if (el.dataset.svc != null && CUR) {   // خدمة وكميتها في بطاقة حملة جاهزة → مميزات البطاقة تنكتب منها
-    if (!undoTimer) pushUndo(); clearTimeout(undoTimer); undoTimer = setTimeout(() => undoTimer = null, 900);
-    const c = getP(CUR.data, el.dataset.svc); if (!c) return;
-    const q = { ...(c.svc && typeof c.svc === "object" ? c.svc : {}) }, n = Math.min(999, Math.max(0, Math.floor(+el.value || 0)));
-    if (n) q[el.dataset.sid] = n; else delete q[el.dataset.sid];
-    c.svc = q; c.items = svcText(q);
-    const pv = panel.querySelector(`[data-svcprev="${CSS.escape(el.dataset.svc)}"]`); if (pv) pv.textContent = "تظهر في البطاقة:\n" + (c.items || "—");
-    changed(false); return;
-  }
-  if (!p || !CUR) return;
+  const el = e.target, p = el.dataset.p; if (!p || !CUR) return;
   if (!undoTimer) pushUndo(); clearTimeout(undoTimer); undoTimer = setTimeout(() => undoTimer = null, 900);
   setP(CUR.data, p, el.type === "checkbox" ? el.checked : el.value);
   if (/\.(fields|sub)\.\d+\.type$/.test(p)) WC.normField(getP(CUR.data, p.slice(0, -5)));
@@ -884,22 +857,6 @@ panel.addEventListener("change", (e) => {
     const f = { ...def, id: uid("f-"), hidden: false }; CUR.data.parts[+el.dataset.core].fields.push(f);
     OPEN.request["fld:" + f.id] = true; changed(true);
   }
-});
-/* ميزة جديدة في بطاقة حملة جاهزة: تنضاف للبطاقة بكمية ١، والحاسبة تضيفها خدمة في «٣. الخدمات» أول ما تشوفها (svcNew) */
-panel.addEventListener("click", (e) => {
-  const b = e.target.closest("[data-svcadd]"); if (!b || !CUR || !CAT) return;
-  e.preventDefault();
-  const base = b.dataset.svcadd, nameEl = panel.querySelector(`[data-svcnewname="${CSS.escape(base)}"]`), feeEl = panel.querySelector(`[data-svcnewfee="${CSS.escape(base)}"]`);
-  const name = (nameEl && nameEl.value || "").replace(/\s+/g, " ").trim().slice(0, 120); if (!name) { if (nameEl) nameEl.focus(); return; }
-  const c = getP(CUR.data, base); if (!c) return;
-  pushUndo();
-  const q = { ...(c.svc && typeof c.svc === "object" ? c.svc : {}) };
-  const same = CAT.find(s => String(s.name).trim() === name);   // موجودة بنفس الاسم: تنحط بس
-  let id = same ? same.id : "c" + Date.now();
-  if (!same) { c.svcNew = { ...(c.svcNew || {}), [id]: { name, fee: Math.max(0, Math.floor(+(feeEl && feeEl.value) || 0)) } }; CAT.push({ id, name }); }
-  q[id] = q[id] || 1; c.svc = q; c.items = svcText(q);
-  changed(true);
-  toast(same ? `«${name}» موجودة في الحاسبة، وانحطّت في الحملة.` : `انضافت «${name}». لما تحفظين وتفتحين الحاسبة تنضاف في «٣. الخدمات»${feeEl && +feeEl.value ? "" : "، وحطي سعرها هناك"}.`);
 });
 panel.addEventListener("click", (e) => {
   const b = e.target.closest("[data-op]"); if (!b || !CUR) return;
