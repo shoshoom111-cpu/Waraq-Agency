@@ -531,6 +531,54 @@ function safeRender(r){
   catch(e){if(window.console)console.warn("render:",e);try{localStorage.removeItem("waraq-content-request")}catch(x){}render(WaraqContent.defaults("request"));applyBrand()}
 }
 
+/* ---------- الصفحة الأساسية ← خيارات نموذج الطلب ----------
+   «خدمات مخصصة» = خدمات قسم «خدمات متخصصة» بنفس الأسامي وبنفس الترتيب (أسئلة كل خيار تبقى معه)،
+   «حملة جاهزة» = بطاقات الحملات الجاهزة. اللي انخفى أو انحذف هناك ينخفي هنا، واللي انضاف ينضاف. */
+var PICK_ALIAS={"معارض الكتاب":["معرض كتاب"],"تصاميم خاصة":["بوسترات"],"حملة ترويجية متكاملة":["حملة متكاملة"]};
+function nrm(s){return String(s||"").replace(/\s+/g," ").trim()}
+function rField(r,key){var out=null;(r.parts||[]).forEach(function(p){(p.fields||[]).forEach(function(f){if(!out&&f&&f.key===key)out=f})});return out}
+function homeSec(type){return HOME&&(HOME.sections||[]).filter(function(s){return s&&s.type===type})[0]}
+function mergePicks(r){
+  var f=rField(r,"picks"), sec=homeSec("services"); if(!f||!Array.isArray(f.options)||!sec||!sec.data)return;
+  var items=(sec.data.items||[]).filter(function(it){return it&&nrm(it.title)}); if(!items.length)return;
+  var old=f.options.filter(Boolean), used=[], out=[];
+  items.forEach(function(it,i){
+    var tt=nrm(it.title), al=PICK_ALIAS[tt]||[];
+    var o=old.filter(function(x){return used.indexOf(x)<0&&it.sid&&x.sid===it.sid})[0]||
+      old.filter(function(x){return used.indexOf(x)<0&&(nrm(x.t)===tt||al.indexOf(nrm(x.t))>-1||(Array.isArray(x.aka)&&x.aka.indexOf(tt)>-1))})[0];
+    if(o){used.push(o);o=JSON.parse(JSON.stringify(o))}else o={id:"sv"+i+"-"+tt.length};
+    if(o.t&&nrm(o.t)!==tt)o.aka=(o.aka||[]).concat(nrm(o.t));
+    o.t=tt; if(it.hidden||sec.hidden)o.hidden=true; else delete o.hidden;
+    out.push(o);
+  });
+  // خيار مو خدمة: يبقى ظاهر لو حملة جاهزة ظاهرة تختاره (مثل «أمسية أو لقاء» لحملة الأمسيات)، وإلا ينخفي (والطلبات القديمة تبقى تتعرّف عليه)
+  var camp=homeSec("campaigns"), refs=[];
+  if(camp&&camp.data&&!camp.hidden)["a","b"].forEach(function(k){(camp.data[k]||[]).forEach(function(c){if(c&&!c.hidden&&nrm(c.pick))refs.push(nrm(c.pick))})});
+  var refd=function(t){t=nrm(t);return refs.some(function(r){return t===r||t.indexOf(r)===0})};
+  old.forEach(function(x){if(used.indexOf(x)<0&&x.t){var c=JSON.parse(JSON.stringify(x));if(!(refd(x.t)&&!x.hidden))c.hidden=true;out.push(c)}});
+  f.options=out;
+}
+function mergePkg(r){
+  var f=rField(r,"pkg"), sec=homeSec("campaigns"); if(!f||!Array.isArray(f.options)||!sec||!sec.data)return;
+  var base=function(s){return nrm(s).replace(/\s*\(.*\)\s*$/,"")}, opts=f.options.filter(Boolean).map(function(o){return JSON.parse(JSON.stringify(o))}), live=[];
+  [["a",false],["b",true]].forEach(function(x){
+    (sec.data[x[0]]||[]).forEach(function(c){
+      if(!c||!nrm(c.title))return;
+      var pub=x[1], name=nrm(c.title)+(pub&&!/\(.*\)$/.test(c.title)?" (دار نشر)":""), sameAud=function(t){return pub===/\(دار نشر\)/.test(t)};
+      var o=opts.filter(function(y){return c.cid&&y.cid===c.cid})[0]||opts.filter(function(y){return y.t&&!/^#/.test(y.t)&&live.indexOf(y)<0&&sameAud(y.t)&&base(y.t)===base(c.title)})[0];
+      if(!o){o={id:"pk-"+(c.cid||name.length+"-"+opts.length),cid:c.cid};var h=pub?-1:opts.map(function(y){return /^#/.test(y.t||"")&&/دور|دار/.test(y.t)}).indexOf(true);if(h>=0)opts.splice(h,0,o);else opts.push(o)}
+      o.t=name; if(c.hidden||sec.hidden)o.hidden=true; else delete o.hidden;
+      live.push(o);
+    });
+  });
+  opts.forEach(function(o){if(o.t&&!/^#/.test(o.t)&&live.indexOf(o)<0)o.hidden=true});
+  f.options=opts;
+}
+function mergeHome(r){
+  if(!r||!HOME)return r;
+  try{var c=JSON.parse(JSON.stringify(r));mergePicks(c);mergePkg(c);return c}catch(e){if(window.console)console.warn("merge:",e);return r}
+}
+
 /* ---------- preview mode ---------- */
 function mark(sel,scroll){
   each(document.querySelectorAll(".sel-sec"),function(x){x.classList.remove("sel-sec")});
@@ -558,10 +606,16 @@ if(PREVIEW){
   var dirty=false;
   $("form").addEventListener("input",function(){dirty=true});
   $("form").addEventListener("change",function(){dirty=true});
-  WaraqContent.load("home",function(h){if(h)HOME=h;if(h&&h.brand){BRAND=h.brand;applyBrand()}var pk=R&&fieldBy("pkg");if(pk)pkgView(pk)});
+  // الخدمات والحملات في صفحة الطلب تمشي دايم مع الصفحة الأساسية: أي إضافة أو تغيير اسم أو إخفاء أو حذف هناك ينطبق هنا على طول
+  var RAW=null;
+  WaraqContent.load("home",function(h,net){
+    var real=net||!!WaraqContent.cached("home");   // مو النسخة الافتراضية اللي تطلع لو ما وصلنا للقاعدة
+    if(h&&real)HOME=h; if(h&&h.brand){BRAND=h.brand;applyBrand()}
+    if(RAW&&HOME&&!dirty)safeRender(mergeHome(RAW)); else{var pk=R&&fieldBy("pkg");if(pk)pkgView(pk)}
+  });
   WaraqContent.load("request",function(r,net){
     if(R&&net&&dirty)return;   // ما نعيد رسم النموذج والعميل يعبّيه
-    safeRender(r);
+    RAW=r; safeRender(mergeHome(r));
   });
 }
 })();
