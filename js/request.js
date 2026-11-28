@@ -92,6 +92,15 @@ function fieldHTML(f,pi){
   }
   return h+'</div>';
 }
+/* نصوص الخطوات والحملة الجاهزة والموافقة: تتعدّل من «تعديل صفحة الطلبات» (نصوص الصفحة)، والفاضي يرجع للنص الأصلي */
+var TXT_DEF={next:"التالي",step1:"طلبك والتواصل",step2:"كتابك والإرسال",reviewTitle:"راجع طلبك",reviewEdit:"تعديل",reviewNote:"باقي معلومات كتابك، وبعدها ترسل الطلب.",consent:"أوافق على استخدام بياناتي للتواصل معي بخصوص الطلب، كما في سياسة الخصوصية.",consentErr:"لازم توافق على سياسة الخصوصية قبل إرسال الطلب.",saveNote:"نحفظ اللي تكتبه هنا أول بأول، عشان لو ما كمّلت الطلب نقدر نتواصل معك ونساعدك تكمّله.",pkgFeat:"مميزات الحملة",pkgChange:"غيّر الحملة",pkgRemove:"إزالة الحملة",pkgAdd:"+ إضافة حملة",whoNote:"حسب الحملة المختارة",lockNote:"«{الخدمة}» من الحملة المختارة. لو ما تبيها، غيّر الحملة أو أزلها."};
+function TX(k){var v=R&&R[k];return v&&String(v).trim()?String(v):TXT_DEF[k]}
+function applyTexts(){
+  $("si-1-t").textContent=TX("step1"); $("si-2-t").textContent=TX("step2");
+  var c=esc(TX("consent")), lk="سياسة الخصوصية";
+  $("consent-t").innerHTML=c.indexOf(lk)>-1?c.replace(lk,'<a href="privacy.html" target="_blank" rel="noopener">'+lk+'</a>'):c+' <a href="privacy.html" target="_blank" rel="noopener">('+lk+')</a>';
+  $("consent-err").textContent=TX("consentErr"); $("save-note").textContent=TX("saveNote");
+}
 function render(r){
   R=r;
   WA=String(BRAND.whatsapp||CFG.whatsapp||"").replace(/\D/g,""); hasWA=/^\d{8,15}$/.test(WA);
@@ -112,7 +121,7 @@ function render(r){
   $("after").hidden=!vis(R.after).length&&!R.afterTitle;
   $("ok-title").textContent=R.okTitle||"وصلنا طلبك";
   $("wa").hidden=!hasWA;
-  initRows(); prefill(); syncWho(); syncPkgAud(); applyWhen(); setupSteps();
+  applyTexts(); initRows(); prefill(); syncWho(); syncPkgAud(); applyWhen(); setupSteps();
   document.body.classList.remove("loading");
 }
 
@@ -169,14 +178,14 @@ function lockPick(pkg){
   each(document.querySelectorAll('#parts input[data-lock="1"]'),function(i){i.removeAttribute("data-lock");var l=i.closest("label");if(l){l.classList.remove("locked");l.removeAttribute("title")}});
   var sel=$("q-"+pkg.id), c=sel&&sel.value&&pkgCard(pkg,sel.value), b=c&&pickBox(c.pick); if(!b)return;
   if(!b.checked){b.checked=true;applyWhen()}
-  b.setAttribute("data-lock","1"); var l=b.closest("label"); if(l){l.classList.add("locked");l.title="من الحملة المختارة. تنشال لو غيّرت الحملة أو أزلتها"}
+  b.setAttribute("data-lock","1"); var l=b.closest("label"); if(l){l.classList.add("locked");l.title=TX("lockNote").split("{الخدمة}").join(b.value)}
 }
 document.addEventListener("click",function(e){
   var l=e.target.closest&&e.target.closest("label.locked"); if(!l)return;
   var i=l.querySelector('input[data-lock="1"]'); if(!i)return;
   e.preventDefault(); i.checked=true;
   var n=$("lock-note"); if(!n){n=document.createElement("p");n.id="lock-note";n.className="note";n.setAttribute("role","status");var g=l.closest(".picks");if(g)g.parentNode.insertBefore(n,g.nextSibling)}
-  n.textContent="«"+i.value+"» من الحملة المختارة. لو ما تبيها، غيّر الحملة أو أزلها."; clearTimeout(n._t); n._t=setTimeout(function(){n.textContent=""},5000);
+  n.textContent=TX("lockNote").split("{الخدمة}").join(i.value); clearTimeout(n._t); n._t=setTimeout(function(){n.textContent=""},5000);
 },true);
 /* «أنت» تنقفل على جمهور الحملة المختارة: حملة للمؤلفين = «مؤلف» بس، حملة لدور النشر = «دار نشر» بس. الخيار الثاني يختفي لين تنشال الحملة */
 var WHO_BUSY=false;
@@ -191,7 +200,7 @@ function lockWho(pkg){
   if(!want)return;
   var changed=!want.checked; want.checked=true;
   // مكتوبة كنص (مو زر): الاختيار يبقى محفوظ في الخانة المخفية
-  if(grp)grp.hidden=true; if(txt){txt.innerHTML='<b>'+esc(want.value)+'</b><small>حسب الحملة المختارة</small>';txt.hidden=false}
+  if(grp)grp.hidden=true; if(txt){txt.innerHTML='<b>'+esc(want.value)+'</b><small>'+esc(TX("whoNote"))+'</small>';txt.hidden=false}
   if(changed&&!WHO_BUSY){WHO_BUSY=true;syncWho();setTimeout(function(){syncPkgAud();WHO_BUSY=false},0)}
 }
 function pkgView(pkg){
@@ -202,12 +211,12 @@ function pkgView(pkg){
   var info=$("q-"+pkg.id+"-info");
   if(!info){info=document.createElement("div");info.id="q-"+pkg.id+"-info";info.className="pkginfo";info.setAttribute("aria-live","polite");box.parentNode.insertBefore(info,box.nextSibling)}
   info.classList.toggle("pkgnone",none);
-  if(none){info.hidden=false;info.innerHTML='<button type="button" class="pkgchange pkgadd" aria-label="إضافة حملة جاهزة">+ إضافة حملة</button>';return}
+  if(none){info.hidden=false;info.innerHTML='<button type="button" class="pkgchange pkgadd">'+esc(TX("pkgAdd"))+'</button>';return}
   if(!chosen){info.hidden=true;info.innerHTML="";return}
   var c=pkgCard(pkg,v), items=c?String(c.items||"").split("\n").map(function(x){return x.trim()}).filter(Boolean):[];
   info.hidden=false;
-  info.innerHTML=(items.length?'<p class="pkg-h">مميزات الحملة</p><ul>'+items.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'')+
-    '<div class="pkgbtns"><button type="button" class="pkgchange">غيّر الحملة</button><button type="button" class="pkgchange pkgremove">إزالة الحملة</button></div>';
+  info.innerHTML=(items.length?'<p class="pkg-h">'+esc(TX("pkgFeat"))+'</p><ul>'+items.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'')+
+    '<div class="pkgbtns"><button type="button" class="pkgchange">'+esc(TX("pkgChange"))+'</button><button type="button" class="pkgchange pkgremove">'+esc(TX("pkgRemove"))+'</button></div>';
 }
 function pickBox(name){
   var f=fieldBy("picks"); if(!f||!name)return null;
@@ -471,9 +480,10 @@ function setStep(n,quiet){
   each(document.querySelectorAll("#parts fieldset.part"),function(fs){fs.hidden=two&&(STEP===1?fs.classList.contains("step2"):!fs.classList.contains("step2"))});
   var rv=$("review"); if(rv)rv.hidden=STEP!==2||!two;
   each(document.querySelectorAll(".s2only"),function(x){x.hidden=STEP!==2});
-  var lab=STEP===1?"التالي":(R&&R.submit)||"أرسل الطلب";
+  var lab=STEP===1?TX("next"):(R&&R.submit)||"أرسل الطلب";
   $("go").querySelector(".t").textContent=lab; $("go").dataset.label=lab;
-  $("steps-ind").hidden=!two; if(two){$("steps-ind").dataset.step=STEP; $("si-1").setAttribute("aria-current",STEP===1?"step":"false"); $("si-2").setAttribute("aria-current",STEP===2?"step":"false")}
+  $("steps-ind").hidden=!(two||(PREVIEW&&step2Set()));   // في المعاينة يطلع عشان أسامي الخطوات تبان
+   if(two){$("steps-ind").dataset.step=STEP; $("si-1").setAttribute("aria-current",STEP===1?"step":"false"); $("si-2").setAttribute("aria-current",STEP===2?"step":"false")}
   if(!quiet){var top=STEP===2&&rv?rv:$("form");top.scrollIntoView({block:"start",behavior:"smooth"});var h=STEP===2&&rv?rv.querySelector("h2"):null;if(h){h.setAttribute("tabindex","-1");h.focus({preventScroll:true})}}
 }
 function renderReview(lines){
@@ -487,9 +497,9 @@ function renderReview(lines){
     if(i>0){cur={k:l.slice(0,i),v:[l.slice(i+2)]};rows.push(cur)}
     else if(j===l.length-1){cur={k:l.slice(0,-1),v:[]};rows.push(cur)}
   });
-  rv.innerHTML='<div class="rv-head"><h2 id="rv-h">راجع طلبك</h2><button type="button" class="rv-edit" id="rv-edit">تعديل</button></div>'+
+  rv.innerHTML='<div class="rv-head"><h2 id="rv-h">'+esc(TX("reviewTitle"))+'</h2><button type="button" class="rv-edit" id="rv-edit">'+esc(TX("reviewEdit"))+'</button></div>'+
     '<dl>'+rows.map(function(r){return '<div><dt>'+esc(r.k)+'</dt><dd>'+r.v.filter(Boolean).map(esc).join("<br>")+'</dd></div>'}).join("")+'</dl>'+
-    '<p class="rv-next">باقي معلومات كتابك، وبعدها ترسل الطلب.</p>';
+    '<p class="rv-next">'+esc(TX("reviewNote"))+'</p>';
 }
 document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#rv-edit"))setStep(1)});
 

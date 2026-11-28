@@ -274,17 +274,17 @@ body.loading .intro,body.loading .layout{visibility:hidden}
 
   <div class="layout">
     <main>
-      <ol class="steps-ind" id="steps-ind" hidden aria-label="خطوات الطلب"><li id="si-1"><span>١</span>طلبك والتواصل</li><li id="si-2"><span>٢</span>كتابك والإرسال</li></ol>
+      <ol class="steps-ind" id="steps-ind" hidden aria-label="خطوات الطلب"><li id="si-1"><span>١</span><b id="si-1-t">طلبك والتواصل</b></li><li id="si-2"><span>٢</span><b id="si-2-t">كتابك والإرسال</b></li></ol>
       <form class="sheet" id="form" novalidate>
         <div id="parts"></div>
         <div class="hp" aria-hidden="true"><label for="web">اترك هذا الحقل فارغًا</label><input type="text" id="web" tabindex="-1" autocomplete="off"></div>
         <div class="send" data-box="submit">
-          <label class="consent s2only" id="consent-box"><input type="checkbox" id="consent" required aria-describedby="consent-err"><span>أوافق على استخدام بياناتي للتواصل معي بخصوص الطلب، كما في <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</span></label>
+          <label class="consent s2only" id="consent-box"><input type="checkbox" id="consent" required aria-describedby="consent-err"><span id="consent-t">أوافق على استخدام بياناتي للتواصل معي بخصوص الطلب، كما في <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</span></label>
           <p class="ferr" id="consent-err" role="alert" hidden>لازم توافق على سياسة الخصوصية قبل إرسال الطلب.</p>
           <button type="submit" class="btn" id="go"><span class="spin" aria-hidden="true"></span><span class="t">أرسل الطلب</span></button>
           <span class="err" id="err" role="alert"></span>
           <p class="agree s2only" id="agree"></p>
-          <p class="agree">نحفظ اللي تكتبه هنا أول بأول، عشان لو ما كمّلت الطلب نقدر نتواصل معك ونساعدك تكمّله.</p>
+          <p class="agree" id="save-note">نحفظ اللي تكتبه هنا أول بأول، عشان لو ما كمّلت الطلب نقدر نتواصل معك ونساعدك تكمّله.</p>
         </div>
       </form>
 
@@ -311,10 +311,10 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   </div>
 </div>
 <noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
-<script src="config.js?v=202611281305"></script>
-<script src="js/appcheck.js?v=202611281305"></script>
-<script src="js/content.js?v=202611281305"></script>
-<script src="js/visit.js?v=202611281305"></script>
-<script src="js/request.js?v=202611281305"></script>
+<script src="config.js?v=202611281340"></script>
+<script src="js/appcheck.js?v=202611281340"></script>
+<script src="js/content.js?v=202611281340"></script>
+<script src="js/visit.js?v=202611281340"></script>
+<script src="js/request.js?v=202611281340"></script>
 </body>
 </html>

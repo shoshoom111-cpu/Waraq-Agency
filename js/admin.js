@@ -522,6 +522,8 @@ function loadContent(id) {
 function prep(id, json) {
   const D = JSON.parse(json);
   if (id === "home") (D.sections || []).forEach(s => { if (s && s.type === "join") s.data.fields = WC.joinFields(s.data); });
+  // نصوص جديدة ما انحفظت قبل (مثل «التالي» و«غيّر الحملة»): تطلع في المحرر بنصها الحالي بدل ما تكون فاضية
+  if (id === "request") { const DF = WC.defaults("request"); Object.keys(DF).forEach(k => { if (typeof DF[k] === "string" && D[k] == null) D[k] = DF[k]; }); }
   if (id === "request") { WC.normRequest(D); reqFields(D).forEach(f => { if (Array.isArray(f.options)) f.options.forEach((o, i) => { if (o && !o.id) o.id = "o" + i; }); }); }
   return D;
 }
@@ -642,7 +644,12 @@ const SEO = [S("title", "عنوان الصفحة في قوقل والتبويب"
 const FTYPES = [["text","نص قصير"],["textarea","نص طويل"],["tel","جوال"],["email","بريد"],["url","رابط"],["radio","اختيار واحد"],["checks","اختيار متعدد"],["select","قائمة منسدلة"],["number","رقم"],["date","تاريخ"],["svclist","خدمات يضيفها العميل (+ أضف خدمة)"]];
 const FTN = Object.fromEntries(FTYPES);
 const CORE_NAMES = { who:"الصفة (مؤلف / دار نشر)", name:"الاسم", book:"عنوان الكتاب", genre:"نوع الكتاب", date:"الموعد المهم", status:"حالة الكتاب", where:"أين يُباع", link:"الرابط", picks:"الخدمات المطلوبة", pkg:"الحملة الجاهزة", budget:"الميزانية", notes:"التفاصيل", phone:"الجوال", email:"البريد" };
-const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("agree", "النص تحت زر الإرسال", "area"),
+const REQ_TEXTS = [S("title", "العنوان"), S("highlight", "الكلمة المظللة"), S("intro", "النص تحت العنوان", "area"), S("submit", "زر الإرسال"), S("next", "زر «التالي» (الخطوة الأولى)"), S("step1", "اسم الخطوة الأولى"), S("step2", "اسم الخطوة الثانية"),
+  S("reviewTitle", "عنوان ملخص الطلب"), S("reviewEdit", "زر الرجوع للتعديل"), S("reviewNote", "النص تحت الملخص"),
+  S("consent", "نص الموافقة قبل الإرسال", "area", { hint: "عبارة «سياسة الخصوصية» تصير رابط لصفحة السياسة" }), S("consentErr", "تنبيه لو ما وافق"),
+  S("agree", "النص تحت زر الإرسال", "area"), S("saveNote", "ملاحظة حفظ الطلب أول بأول", "area"),
+  S("pkgFeat", "عنوان «مميزات الحملة»"), S("pkgChange", "زر «غيّر الحملة»"), S("pkgRemove", "زر «إزالة الحملة»"), S("pkgAdd", "زر «إضافة حملة»"),
+  S("whoNote", "النص جنب «أنت» لما تحددها الحملة"), S("lockNote", "تنبيه خدمة الحملة المقفولة", "text", { hint: "{الخدمة} = اسم الخدمة" }),
   S("okTitle", "عنوان رسالة النجاح"), S("okText", "نص رسالة النجاح", "area"), S("afterTitle", "عنوان «بعد ما ترسل الطلب»"),
   L("after", "خطوات «بعد ما ترسل الطلب»", [S("title", "الخطوة", "text", { title: true }), S("text", "الشرح")], { title: "خطوة", text: "" }, "title")];
 
