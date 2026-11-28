@@ -164,8 +164,39 @@ function pkgCard(pkg,val){
   var all=((sec.data&&sec.data.a)||[]).concat((sec.data&&sec.data.b)||[]).filter(function(c){return c&&c.title});
   return (o&&o.cid&&all.filter(function(c){return c.cid===o.cid})[0])||all.filter(function(c){return c.title===val.replace(/\s*\(دار نشر\)\s*$/,"")})[0]||null;
 }
+/* خدمة الحملة المختارة تنقفل في «خدمات مخصصة»: ما تنشال وهي جزء من الحملة. تنفك لما تتغير الحملة أو تنشال */
+function lockPick(pkg){
+  each(document.querySelectorAll('#parts input[data-lock="1"]'),function(i){i.removeAttribute("data-lock");var l=i.closest("label");if(l){l.classList.remove("locked");l.removeAttribute("title")}});
+  var sel=$("q-"+pkg.id), c=sel&&sel.value&&pkgCard(pkg,sel.value), b=c&&pickBox(c.pick); if(!b)return;
+  if(!b.checked){b.checked=true;applyWhen()}
+  b.setAttribute("data-lock","1"); var l=b.closest("label"); if(l){l.classList.add("locked");l.title="من الحملة المختارة. تنشال لو غيّرت الحملة أو أزلتها"}
+}
+document.addEventListener("click",function(e){
+  var l=e.target.closest&&e.target.closest("label.locked"); if(!l)return;
+  var i=l.querySelector('input[data-lock="1"]'); if(!i)return;
+  e.preventDefault(); i.checked=true;
+  var n=$("lock-note"); if(!n){n=document.createElement("p");n.id="lock-note";n.className="note";n.setAttribute("role","status");var g=l.closest(".picks");if(g)g.parentNode.insertBefore(n,g.nextSibling)}
+  n.textContent="«"+i.value+"» من الحملة المختارة. لو ما تبيها، غيّر الحملة أو أزلها."; clearTimeout(n._t); n._t=setTimeout(function(){n.textContent=""},5000);
+},true);
+/* «أنت» تنقفل على جمهور الحملة المختارة: حملة للمؤلفين = «مؤلف» بس، حملة لدور النشر = «دار نشر» بس. الخيار الثاني يختفي لين تنشال الحملة */
+var WHO_BUSY=false;
+function lockWho(pkg){
+  var who=fieldBy("who"), sel=$("q-"+pkg.id); if(!who||!sel)return;
+  var ins=document.querySelectorAll('input[name="q-'+who.id+'"]'), first=choices(who.options)[0], v=sel.value;
+  var grp=ins.length&&ins[0].closest(".picks"), txt=$("who-fixed");
+  if(!txt&&grp){txt=document.createElement("p");txt.id="who-fixed";txt.className="who-fixed";txt.hidden=true;grp.parentNode.insertBefore(txt,grp.nextSibling)}
+  if(!v){if(grp)grp.hidden=false;if(txt)txt.hidden=true;return}
+  var pub=/\(دار نشر\)/.test(v), want=null;
+  each(ins,function(i){if(!want&&(pub?i.value!==first:i.value===first))want=i});
+  if(!want)return;
+  var changed=!want.checked; want.checked=true;
+  // مكتوبة كنص (مو زر): الاختيار يبقى محفوظ في الخانة المخفية
+  if(grp)grp.hidden=true; if(txt){txt.innerHTML='<b>'+esc(want.value)+'</b><small>حسب الحملة المختارة</small>';txt.hidden=false}
+  if(changed&&!WHO_BUSY){WHO_BUSY=true;syncWho();setTimeout(function(){syncPkgAud();WHO_BUSY=false},0)}
+}
 function pkgView(pkg){
   var box=$("q-"+pkg.id+"-chips"), sel=$("q-"+pkg.id); if(!box||!sel)return;
+  lockPick(pkg); lockWho(pkg);
   var v=sel.value, chosen=!!v&&!box._open, none=!v&&!box._open;   // none: ما فيه حملة مختارة → زر «إضافة حملة» بدل القائمة
   each(box.querySelectorAll("label"),function(l){var i=l.querySelector("input");l.hidden=none||(chosen&&(!i||i.value!==v))});
   var info=$("q-"+pkg.id+"-info");
