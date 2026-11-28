@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const toAr = (n) => String(n);
 const GATES = ["g-config","g-login","g-noadmin"];
-const VIEWS = { requests:"v-requests", home:"v-editor", form:"v-editor", history:"v-history", settings:"v-settings" };
+const VIEWS = { requests:"v-requests", home:"v-editor", form:"v-editor", history:"v-history", settings:"v-settings", privacy:"v-privacy" };
 function gate(id) { GATES.forEach(g => $(g).hidden = g !== id); document.querySelectorAll(".view").forEach(v => v.hidden = true); $("appnav").hidden = true; }
 let toastT;
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 3500); }
@@ -73,6 +73,7 @@ function route() {
   $("frame").classList.toggle("wide", v === "home" || v === "form");
   if (v === "home") openEditor("home"); else if (v === "form") openEditor("request");
   if (v === "history") loadHistory();
+  if (v === "privacy") loadPolicy();
   if (v === "settings") { renderTeam(); renderTpl(); loadAgr(); }
 }
 window.addEventListener("hashchange", route);
@@ -1030,6 +1031,43 @@ $("modal-restore").addEventListener("click", (e) => { if (MODAL) { if (!arm(e.cu
 /* =============== agreement text (used by the campaign calculator: calc/agreement) =============== */
 const AGR_DOC = () => F.doc(db, "calc", "agreement");
 let AGR_LOADED = false;
+/* =============== سياسة الخصوصية (siteContent/privacy) =============== */
+let POL_LOADED = false;
+const POL_DOC = () => F.doc(db, "siteContent", "privacy");
+async function polOriginal() {   // النص الأصلي اللي في صفحة privacy.html
+  const h = await (await fetch("privacy.html?orig=" + Date.now(), { cache: "no-store" })).text();
+  const d = new DOMParser().parseFromString(h, "text/html"), box = d.getElementById("policy"), dt = d.getElementById("pol-date");
+  return { text: box && window.WaraqPolicy ? WaraqPolicy.fromDOM(box) : "", updated: dt ? dt.textContent.replace(/^\s*آخر تحديث:\s*/, "").trim() : "" };
+}
+const polPreview = () => { $("pol-prev").innerHTML = window.WaraqPolicy ? WaraqPolicy.html($("pol-text").value) : ""; };
+async function loadPolicy() {
+  if (POL_LOADED) return polPreview();
+  const t = $("pol-text"), m = $("pol-msg"); t.disabled = true;
+  try {
+    const s = await F.getDoc(POL_DOC()); let p = null;
+    if (s.exists() && s.data().json) { try { p = JSON.parse(s.data().json); } catch {} }
+    if (!p || !String(p.text || "").trim()) p = await polOriginal();
+    t.value = p.text || ""; $("pol-date-in").value = p.updated || ""; POL_LOADED = true; m.textContent = ""; polPreview();
+  } catch (err) { m.className = "saved err"; m.textContent = "ما قدرت أحمّل النص: " + (err.code || err.message); }
+  finally { t.disabled = false; }
+}
+$("pol-text").addEventListener("input", polPreview);
+$("pol-save").addEventListener("click", async () => {
+  const m = $("pol-msg"), b = $("pol-save"), text = $("pol-text").value.trim();
+  if (!text) { m.className = "saved err"; m.textContent = "النص فاضي."; return; }
+  b.disabled = true; m.className = "saved"; m.textContent = "جارٍ النشر…";
+  try {
+    await F.setDoc(POL_DOC(), { json: JSON.stringify({ text, updated: $("pol-date-in").value.trim().slice(0, 60) }), updatedAt: F.serverTimestamp() });
+    m.textContent = "انحفظ ونُشر. التعديل ظاهر في صفحة سياسة الخصوصية الحين.";
+  }
+  catch (err) { m.className = "saved err"; m.textContent = "ما انحفظ: " + (err.code || err.message); }
+  finally { b.disabled = false; }
+});
+$("pol-reset").addEventListener("click", async (e) => {
+  if (!arm(e.currentTarget, "اضغطي مرة ثانية: يرجع النص الأصلي هنا (ما ينحفظ لين تضغطين «حفظ ونشر»).")) return;
+  try { const p = await polOriginal(); $("pol-text").value = p.text; $("pol-date-in").value = p.updated; polPreview(); } catch {}
+});
+
 async function loadAgr() {
   const t = $("agr-text"), m = $("agr-msg");
   $("agr-keys").innerHTML = (window.AGR_KEYS || []).map(([k, l]) => `<button type="button" data-agk="${esc(k)}" title="${esc(l)}">{${esc(k)}}</button>`).join("");

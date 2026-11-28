@@ -112,7 +112,7 @@ function render(r){
   $("after").hidden=!vis(R.after).length&&!R.afterTitle;
   $("ok-title").textContent=R.okTitle||"وصلنا طلبك";
   $("wa").hidden=!hasWA;
-  initRows(); prefill(); syncWho(); syncPkgAud(); applyWhen();
+  initRows(); prefill(); syncWho(); syncPkgAud(); applyWhen(); setupSteps();
   document.body.classList.remove("loading");
 }
 
@@ -166,10 +166,12 @@ function pkgCard(pkg,val){
 }
 function pkgView(pkg){
   var box=$("q-"+pkg.id+"-chips"), sel=$("q-"+pkg.id); if(!box||!sel)return;
-  var v=sel.value, chosen=!!v&&!box._open;
-  each(box.querySelectorAll("label"),function(l){var i=l.querySelector("input");l.hidden=chosen&&(!i||i.value!==v)});
+  var v=sel.value, chosen=!!v&&!box._open, none=!v&&!box._open;   // none: ما فيه حملة مختارة → زر «إضافة حملة» بدل القائمة
+  each(box.querySelectorAll("label"),function(l){var i=l.querySelector("input");l.hidden=none||(chosen&&(!i||i.value!==v))});
   var info=$("q-"+pkg.id+"-info");
   if(!info){info=document.createElement("div");info.id="q-"+pkg.id+"-info";info.className="pkginfo";info.setAttribute("aria-live","polite");box.parentNode.insertBefore(info,box.nextSibling)}
+  info.classList.toggle("pkgnone",none);
+  if(none){info.hidden=false;info.innerHTML='<button type="button" class="pkgchange pkgadd" aria-label="إضافة حملة جاهزة">+ إضافة حملة</button>';return}
   if(!chosen){info.hidden=true;info.innerHTML="";return}
   var c=pkgCard(pkg,v), items=c?String(c.items||"").split("\n").map(function(x){return x.trim()}).filter(Boolean):[];
   info.hidden=false;
@@ -340,6 +342,8 @@ function normLink(v){
 }
 function clearErrs(){each(document.querySelectorAll(".ferr"),function(x){x.remove()});each(document.querySelectorAll("[aria-invalid]"),function(x){x.removeAttribute("aria-invalid")});$("err").textContent=""}
 function fail(f,msg){
+  var ffs=document.querySelector('#parts [data-field="'+f.id+'"]'), pfs=ffs&&ffs.closest("fieldset.part");
+  if(pfs&&pfs.hidden)setStep(pfs.classList.contains("step2")?2:1,true);   // الخانة الغلط في الخطوة الثانية/الأولى: نرجع لها
   $("err").textContent=msg;
   var fb=document.querySelector('[data-field="'+f.id+'"]');
   if(fb){var fe=document.createElement("p");fe.className="ferr";fe.id="ferr-"+f.id;fe.setAttribute("role","alert");fe.textContent=msg;fb.appendChild(fe)}
@@ -422,12 +426,49 @@ function show(okMode,d,ref,lines,warn){
   else{$("text").value=lines.join("\n");if(hasWA)$("wa").href="https://wa.me/"+WA+"?text="+encodeURIComponent(lines.join("\n"));$("warn").hidden=!warn;$("warn").textContent=warn||""}
   $("done").focus({preventScroll:true});window.scrollTo({top:0,behavior:"smooth"});
 }
+/* ---------- خطوتين: (١) عنك والخدمة والتواصل ← «التالي»  (٢) ملخص اللي كتبه + معلومات الكتاب + الموافقة ← «أرسل الطلب» ---------- */
+var STEP=1;
+function step2Set(){return document.querySelector("#parts fieldset.step2")}
+function inStep2(f){return !!document.querySelector('#parts fieldset.step2 [data-field="'+f.id+'"]')}
+function setupSteps(){
+  var b=fieldBy("book"), el=b&&document.querySelector('#parts [data-field="'+b.id+'"]'), fs=el&&el.closest("fieldset.part");
+  if(fs)fs.classList.add("step2");
+  setStep(1,true);
+}
+function setStep(n,quiet){
+  var two=!PREVIEW&&!!step2Set(); STEP=two?n:2;   // في معاينة لوحة التحكم كل الأقسام ظاهرة
+  each(document.querySelectorAll("#parts fieldset.part"),function(fs){fs.hidden=two&&(STEP===1?fs.classList.contains("step2"):!fs.classList.contains("step2"))});
+  var rv=$("review"); if(rv)rv.hidden=STEP!==2||!two;
+  each(document.querySelectorAll(".s2only"),function(x){x.hidden=STEP!==2});
+  var lab=STEP===1?"التالي":(R&&R.submit)||"أرسل الطلب";
+  $("go").querySelector(".t").textContent=lab; $("go").dataset.label=lab;
+  $("steps-ind").hidden=!two; if(two){$("steps-ind").dataset.step=STEP; $("si-1").setAttribute("aria-current",STEP===1?"step":"false"); $("si-2").setAttribute("aria-current",STEP===2?"step":"false")}
+  if(!quiet){var top=STEP===2&&rv?rv:$("form");top.scrollIntoView({block:"start",behavior:"smooth"});var h=STEP===2&&rv?rv.querySelector("h2"):null;if(h){h.setAttribute("tabindex","-1");h.focus({preventScroll:true})}}
+}
+function renderReview(lines){
+  var rv=$("review");
+  if(!rv){rv=document.createElement("section");rv.id="review";rv.className="review";rv.setAttribute("aria-labelledby","rv-h");$("parts").insertBefore(rv,$("parts").firstChild)}
+  var rows=[],cur=null;
+  lines.forEach(function(l){
+    if(!l)return;
+    if(/^- /.test(l)&&cur){cur.v.push(l.slice(2));return}
+    var i=l.indexOf(": "),j=l.lastIndexOf(":");
+    if(i>0){cur={k:l.slice(0,i),v:[l.slice(i+2)]};rows.push(cur)}
+    else if(j===l.length-1){cur={k:l.slice(0,-1),v:[]};rows.push(cur)}
+  });
+  rv.innerHTML='<div class="rv-head"><h2 id="rv-h">راجع طلبك</h2><button type="button" class="rv-edit" id="rv-edit">تعديل</button></div>'+
+    '<dl>'+rows.map(function(r){return '<div><dt>'+esc(r.k)+'</dt><dd>'+r.v.filter(Boolean).map(esc).join("<br>")+'</dd></div>'}).join("")+'</dl>'+
+    '<p class="rv-next">باقي معلومات كتابك، وبعدها ترسل الطلب.</p>';
+}
+document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#rv-edit"))setStep(1)});
+
 $("form").addEventListener("submit",function(e){
   e.preventDefault(); if(PREVIEW)return;
   clearErrs();
   if($("web").value){show(true,{},"------",[]);return}
   var data={}, answers=[], lines=["طلب خدمة من موقع وكالة "+BRAND.name,""], bad=null;
   fields().some(function(f){
+    if(STEP===1&&inStep2(f))return false;
     var by=shownBy(f); if(by===false)return false;
     var lbl=by===true?f.label:by+" ← "+f.label;
     if(f.type==="svclist"){
@@ -456,6 +497,7 @@ $("form").addEventListener("submit",function(e){
     return false;
   });
   if(bad)return fail(bad[0],bad[1]);
+  if(STEP===1){renderReview(lines.slice(2));setStep(2);return}
   var cs=$("consent");
   if(cs&&!cs.checked){$("consent-err").hidden=false;cs.setAttribute("aria-invalid","true");$("err").textContent="وافق على سياسة الخصوصية قبل الإرسال.";cs.focus();$("consent-box").scrollIntoView({block:"center",behavior:"smooth"});return}
   if(answers.length)data.answers=answers.slice(0,40);
@@ -469,7 +511,7 @@ $("form").addEventListener("submit",function(e){
       var denied=err&&err.code==="permission-denied";
       show(false,data,"",lines,denied?"ما قدرنا نحفظ الطلب لأن فيه بيانات غير مقبولة (مثلًا نص طويل جدًا). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.":"ما قدرنا نحفظ الطلب الآن (تحقّق من اتصالك). أرسله لنا بالواتساب أو انسخه وأرسله على حساباتنا.")});
 });
-$("again").addEventListener("click",function(){$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});each(document.querySelectorAll("label.custom,.cdesc"),function(x){x.remove()});each(document.querySelectorAll(".morebox"),function(b){b.hidden=true});each(document.querySelectorAll("[data-more]"),function(b){b.setAttribute("aria-expanded","false")});initRows();prefill();syncWho();syncPkgAud();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
+$("again").addEventListener("click",function(){setTimeout(function(){setStep(1,true)},0);$("form").reset();each(document.querySelectorAll(".srows"),function(b){b.innerHTML=""});each(document.querySelectorAll("label.custom,.cdesc"),function(x){x.remove()});each(document.querySelectorAll(".morebox"),function(b){b.hidden=true});each(document.querySelectorAll("[data-more]"),function(b){b.setAttribute("aria-expanded","false")});initRows();prefill();syncWho();syncPkgAud();applyWhen();$("done").hidden=true;$("form").hidden=false;var i=$("form").querySelector("input:not([type=radio]):not([type=checkbox]),textarea");if(i)i.focus()});
 $("copy").addEventListener("click",function(){
   var ta=$("text");
   function man(){ta.focus();ta.select();$("copied").textContent="حدّدنا النص. انسخه يدويًا."}

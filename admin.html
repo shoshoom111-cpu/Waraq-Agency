@@ -264,6 +264,8 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 @media (min-width:981px){.prev .close{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .agr-keys{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.agr-keys button{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--paper);color:var(--ink);padding:2px 9px;cursor:pointer}.agr-keys button:hover{border-color:var(--ink)}.agr-text{font-size:.9rem;line-height:1.8;min-height:420px}
+/* معاينة سياسة الخصوصية */
+.pol-prev-h{font-size:1rem;margin:22px 0 8px}.pol-prev{border:1px solid var(--rule);background:var(--paper);padding:6px 20px 16px;max-height:520px;overflow:auto;line-height:1.85}.pol-prev h2{font-size:1.05rem;margin:18px 0 4px}.pol-prev ul{padding-inline-start:1.2em;margin:6px 0}.pol-prev p{margin:6px 0}
 
 /* شعار رحلة ورق في رأس الصفحة (ألوان الموقع ما تغيّرت) */
 .brand{align-items:center}
@@ -291,6 +293,7 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
     <a href="#requests" data-view="requests">الطلبات <span class="c num" id="nav-new" hidden></span></a>
     <a href="#home" data-view="home">تعديل الصفحة الأساسية <span class="dot" data-dirty="home" hidden></span></a>
     <a href="#form" data-view="form">تعديل صفحة الطلبات <span class="dot" data-dirty="request" hidden></span></a>
+    <a href="#privacy" data-view="privacy">سياسة الخصوصية</a>
     <a href="#history" data-view="history">السجل والنسخ</a>
     <a href="#settings" data-view="settings">الإعدادات</a>
   </nav>
@@ -347,6 +350,18 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
       <div class="panel" id="panel"></div>
       <div class="prev" id="prev"><button class="btn sm close" type="button" id="ed-hide">إغلاق المعاينة</button><iframe id="frame-prev" title="معاينة"></iframe></div>
     </div>
+  </main>
+
+  <main id="v-privacy" class="view" hidden>
+    <section class="panelbox" aria-labelledby="pol-h">
+      <h2 id="pol-h"><span class="hlx">سياسة الخصوصية</span></h2>
+      <p class="hint">النص اللي في صفحة <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a> (ورابطها في مربع الموافقة بصفحة الطلب). التنسيق: سطر يبدأ بـ <b>##</b> = عنوان، سطر يبدأ بـ <b>-</b> = نقطة، <b>**كلمة**</b> = خط عريض، سطر فاضي = فقرة جديدة. الروابط تنضغط لحالها.</p>
+      <div class="field"><label for="pol-date-in">آخر تحديث</label><input id="pol-date-in" type="text" maxlength="60" placeholder="مثل: نوفمبر 2026"></div>
+      <div class="field"><label for="pol-text">النص</label><textarea id="pol-text" rows="22" class="agr-text" placeholder="جارٍ التحميل…"></textarea></div>
+      <div class="acts"><button class="btn sm" type="button" id="pol-save">حفظ ونشر</button><button class="btn line sm" type="button" id="pol-reset">رجوع للنص الأصلي</button><span class="saved" id="pol-msg" aria-live="polite"></span></div>
+      <h3 class="pol-prev-h">معاينة</h3>
+      <div class="pol-prev" id="pol-prev"></div>
+    </section>
   </main>
 
   <main id="v-history" class="view" hidden>
@@ -417,10 +432,11 @@ textarea{min-height:70px;resize:vertical;line-height:1.6}
 </dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=202611281226"></script>
-<script src="js/appcheck.js?v=202611281226"></script>
-<script src="js/content.js?v=202611281226"></script>
-<script src="js/agreement-default.js?v=202611281226"></script>
-<script type="module" src="js/admin.js?v=202611281226"></script>
+<script src="config.js?v=202611281237"></script>
+<script src="js/appcheck.js?v=202611281237"></script>
+<script src="js/content.js?v=202611281237"></script>
+<script src="js/privacy.js?v=202611281237"></script>
+<script src="js/agreement-default.js?v=202611281237"></script>
+<script type="module" src="js/admin.js?v=202611281237"></script>
 </body>
 </html>
