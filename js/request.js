@@ -562,7 +562,8 @@ $("copy").addEventListener("click",function(){
 /* اسم الوكالة في رأس الصفحة والعنوان، والواتساب، بدون إعادة رسم النموذج */
 function applyBrand(){
   var b=document.querySelector(".mast .brand");
-  if(b&&BRAND.name){b.querySelector("b").textContent=BRAND.name;var sp=b.querySelector("span");if(sp)sp.textContent=BRAND.tagline||""}
+  // الرأس فيه صورة الشعار بدل الاسم المكتوب: نحدّث النص البديل للصورة (لو ما فيه <b>) بدل ما يطيح الكود ويرجّع النموذج الافتراضي
+  if(b&&BRAND.name){var bn=b.querySelector("b"),im=b.querySelector("img");if(bn)bn.textContent=BRAND.name;if(im)im.alt=BRAND.name;var sp=b.querySelector("span");if(sp)sp.textContent=BRAND.tagline||""}
   if(BRAND.name)document.title=(R&&R.title?R.title+(R.highlight?" "+R.highlight:"")+" · ":"")+BRAND.name;
   WA=String(BRAND.whatsapp||CFG.whatsapp||"").replace(/\D/g,""); hasWA=/^\d{8,15}$/.test(WA); $("wa").hidden=!hasWA;
 }
