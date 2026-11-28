@@ -152,18 +152,66 @@ function drawPkgChips(pkg){
     return '<label><input type="radio" name="q-'+pkg.id+'-chip" value="'+esc(o.value)+'"'+(o.value===sel.value?' checked data-was="1"':'')+'>'+esc(o.value.replace(/\s*\(دار نشر\)\s*$/,""))+'</label>';
   }).join("");
   box.closest("[data-field]").hidden=!sel.options.length||sel.options.length<2;
+  pkgView(pkg);
+}
+/* الحملة المختارة: الحملات الثانية تختفي، تطلع مميزاتها (من بطاقتها في الصفحة الأساسية)، وزر «غيّر الحملة» يرجّع القائمة.
+   تغيير الحملة يغيّر «خدمات مخصصة»: خدمة الحملة القديمة تنشال وخدمة الحملة الجديدة تنختار. */
+var HOME=null;
+function pkgCard(pkg,val){
+  if(!HOME||!val)return null;
+  var o=(Array.isArray(pkg.options)?pkg.options:[]).filter(function(x){return x&&String(x.t||"").trim()===val})[0];
+  var sec=(HOME.sections||[]).filter(function(s){return s&&s.type==="campaigns"})[0]; if(!sec)return null;
+  var all=((sec.data&&sec.data.a)||[]).concat((sec.data&&sec.data.b)||[]).filter(function(c){return c&&c.title});
+  return (o&&o.cid&&all.filter(function(c){return c.cid===o.cid})[0])||all.filter(function(c){return c.title===val.replace(/\s*\(دار نشر\)\s*$/,"")})[0]||null;
+}
+function pkgView(pkg){
+  var box=$("q-"+pkg.id+"-chips"), sel=$("q-"+pkg.id); if(!box||!sel)return;
+  var v=sel.value, chosen=!!v&&!box._open;
+  each(box.querySelectorAll("label"),function(l){var i=l.querySelector("input");l.hidden=chosen&&(!i||i.value!==v)});
+  var info=$("q-"+pkg.id+"-info");
+  if(!info){info=document.createElement("div");info.id="q-"+pkg.id+"-info";info.className="pkginfo";info.setAttribute("aria-live","polite");box.parentNode.insertBefore(info,box.nextSibling)}
+  if(!chosen){info.hidden=true;info.innerHTML="";return}
+  var c=pkgCard(pkg,v), items=c?String(c.items||"").split("\n").map(function(x){return x.trim()}).filter(Boolean):[];
+  info.hidden=false;
+  info.innerHTML=(items.length?'<p class="pkg-h">مميزات الحملة</p><ul>'+items.map(function(x){return '<li>'+esc(x)+'</li>'}).join("")+'</ul>':'')+
+    '<div class="pkgbtns"><button type="button" class="pkgchange">غيّر الحملة</button><button type="button" class="pkgchange pkgremove">إزالة الحملة</button></div>';
+}
+function pickBox(name){
+  var f=fieldBy("picks"); if(!f||!name)return null;
+  (Array.isArray(f.options)?f.options:[]).forEach(function(o){if(o&&Array.isArray(o.aka)&&o.aka.indexOf(name)>=0)name=o.t});
+  var base=function(s){return String(s).replace(/\s*\(.*\)\s*$/,"").trim()}, hit=null;
+  each(document.querySelectorAll('input[name="q-'+f.id+'"]'),function(c){if(!hit&&(c.value===name||base(c.value)===base(name)||(base(name)&&base(c.value).indexOf(base(name))===0)))hit=c});
+  return hit;
+}
+function pkgPicks(pkg,oldV,newV){
+  var a=pkgCard(pkg,oldV), b=pkgCard(pkg,newV), ob=a&&pickBox(a.pick), nb=b&&pickBox(b.pick);
+  if(ob&&ob!==nb&&ob.checked)ob.checked=false;
+  if(nb&&!nb.checked){nb.checked=true;var mb=nb.closest(".morebox");if(mb){var btn=document.querySelector('[aria-controls="'+mb.id+'"]');if(btn)openMore(btn,true)}}
+  if(ob||nb){applyWhen();try{$("form").dispatchEvent(new Event("change"))}catch(x){}}
 }
 document.addEventListener("click",function(e){
+  var rm=e.target.closest&&e.target.closest(".pkgremove");
+  if(rm){var pr=fieldBy("pkg"),sl=pr&&$("q-"+pr.id),bo=pr&&$("q-"+pr.id+"-chips");if(!sl)return;
+    var was=sl.value;sl.value="";if(bo){bo._open=false;each(bo.querySelectorAll("input"),function(x){x.checked=false;x.dataset.was=""})}
+    pkgView(pr);pkgPicks(pr,was,"");try{$("form").dispatchEvent(new Event("change"))}catch(x){}
+    var fi=bo&&bo.querySelector("input");if(fi)fi.focus();return}
+  var ch=e.target.closest&&e.target.closest(".pkgchange");
+  if(ch){var pk=fieldBy("pkg"),bx=pk&&$("q-"+pk.id+"-chips");if(bx){bx._open=true;pkgView(pk);var f=bx.querySelector("input:checked")||bx.querySelector("input");if(f)f.focus()}return}
   var inp=e.target.closest&&e.target.closest(".pkgpicks input"); if(!inp)return;
   var pkg=fieldBy("pkg"), sel=pkg&&$("q-"+pkg.id); if(!sel)return;
-  if(inp.dataset.was==="1"){inp.checked=false;sel.value=""}else sel.value=inp.value;
+  var old=sel.value;
+  // الضغط على اسم الحملة المختارة ما يشيلها (الإزالة من زر «إزالة الحملة» بس)
+  inp.checked=true; sel.value=inp.value;
   each(document.querySelectorAll(".pkgpicks input"),function(x){x.dataset.was=x.checked?"1":""});
+  var box=$("q-"+pkg.id+"-chips"); if(box)box._open=false;
+  pkgView(pkg); if(old!==sel.value)pkgPicks(pkg,old,sel.value);
 });
 document.addEventListener("change",function(e){if(e.target.name&&fieldBy("who")&&e.target.name==="q-"+fieldBy("who").id){syncWho();syncPkgAud()}});
 function prefill(){
   var q=new URLSearchParams(location.search);
   [["who","who"],["pick","picks"],["pkg","pkg"]].forEach(function(x){
     var v=q.get(x[0]), f=fieldBy(x[1]); if(!v||!f)return;
+    (Array.isArray(f.options)?f.options:[]).forEach(function(o){if(o&&Array.isArray(o.aka)&&o.aka.indexOf(v)>=0)v=o.t});   // رابط قديم باسم الخيار القديم
     var base=function(s){return s.replace(/\s*\(.*\)\s*$/,"").trim()};
     var same=function(t){return t===v||base(t)===base(v)||(base(v)&&base(t).indexOf(base(v))===0)};
     if(f.type==="select"){var sel=$("q-"+f.id);each(sel.options,function(o){if(same(o.value))sel.value=o.value})}
@@ -301,7 +349,8 @@ function fail(f,msg){
   el.focus(); box.scrollIntoView({block:"center",behavior:"smooth"});
 }
 document.addEventListener("input",function(e){var t=e.target;if(t.removeAttribute){t.removeAttribute("aria-invalid");var g=t.closest&&t.closest(".picks");if(g)g.removeAttribute("aria-invalid");var fb=t.closest&&t.closest("[data-field]"),fe=fb&&fb.querySelector(".ferr");if(fe)fe.remove()}});
-document.addEventListener("change",function(e){var g=e.target.closest&&e.target.closest(".picks");if(g)g.removeAttribute("aria-invalid")});
+document.addEventListener("change",function(e){var g=e.target.closest&&e.target.closest(".picks");if(g)g.removeAttribute("aria-invalid");
+  if(e.target.id==="consent"&&e.target.checked){e.target.removeAttribute("aria-invalid");$("consent-err").hidden=true;if(/سياسة الخصوصية/.test($("err").textContent))$("err").textContent=""}});
 
 /* ---------- Firestore ---------- */
 var dbReady=null;
@@ -407,6 +456,8 @@ $("form").addEventListener("submit",function(e){
     return false;
   });
   if(bad)return fail(bad[0],bad[1]);
+  var cs=$("consent");
+  if(cs&&!cs.checked){$("consent-err").hidden=false;cs.setAttribute("aria-invalid","true");$("err").textContent="وافق على سياسة الخصوصية قبل الإرسال.";cs.focus();$("consent-box").scrollIntoView({block:"center",behavior:"smooth"});return}
   if(answers.length)data.answers=answers.slice(0,40);
   // الطلب يروح للوحة المسوقين بعد ما توافق عليه الوكالة من صفحة الطلبات
   data.dash=false;
@@ -465,7 +516,7 @@ if(PREVIEW){
   var dirty=false;
   $("form").addEventListener("input",function(){dirty=true});
   $("form").addEventListener("change",function(){dirty=true});
-  WaraqContent.load("home",function(h){if(h&&h.brand){BRAND=h.brand;applyBrand()}});
+  WaraqContent.load("home",function(h){if(h)HOME=h;if(h&&h.brand){BRAND=h.brand;applyBrand()}var pk=R&&fieldBy("pkg");if(pk)pkgView(pk)});
   WaraqContent.load("request",function(r,net){
     if(R&&net&&dirty)return;   // ما نعيد رسم النموذج والعميل يعبّيه
     safeRender(r);

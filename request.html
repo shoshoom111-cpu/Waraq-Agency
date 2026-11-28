@@ -63,7 +63,7 @@ h1{font-size:clamp(2.1rem,5vw,3.3rem);font-weight:800;line-height:1.4}
 .hl{background:linear-gradient(var(--mark),var(--mark)) no-repeat right bottom .1em/100% .42em;padding:0 .08em}
 .intro p{font-size:1.12rem;margin-top:14px;color:var(--muted)}
 
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start;padding-bottom:80px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:40px;align-items:start;padding-bottom:80px;max-width:900px}
 .sheet{background:var(--sheet);box-shadow:var(--lift);padding:8px 34px 34px;position:relative}
 .sheet::before,.sheet::after{content:"";position:absolute;width:18px;height:18px;border:1.5px solid var(--ink)}
 .sheet::before{top:-10px;right:-10px;border-left:0;border-bottom:0}
@@ -92,6 +92,18 @@ fieldset.part:last-of-type{border-bottom:0}
 .picks input{position:absolute;opacity:0;width:1px;height:1px}
 .picks label:has(input:checked){background:var(--mark);border-color:var(--ink);font-weight:700}
 .picks label:has(input:focus-visible){outline:3px solid var(--ink);outline-offset:2px}
+/* الحملة الجاهزة المختارة: مميزاتها وزر تغييرها */
+.picks label[hidden]{display:none}
+.pkginfo{margin-top:10px;border:1.5px solid var(--rule);border-inline-start:4px solid var(--ink);background:var(--sheet);padding:12px 16px}
+.pkginfo[hidden]{display:none}
+.pkginfo .pkg-h{font-family:var(--display);font-weight:700;font-size:.9rem;margin:0 0 6px}
+.pkginfo ul{margin:0 0 10px;padding-inline-start:20px;font-size:.95rem;line-height:1.8}
+.pkgchange{font:inherit;font-family:var(--display);font-weight:700;font-size:.88rem;color:var(--ink);background:none;border:1.5px solid var(--ink);padding:6px 14px;cursor:pointer}
+.pkgchange:hover{background:var(--mark)}
+.pkgbtns{display:flex;flex-wrap:wrap;gap:8px}
+.pkgremove{border-color:var(--rule);color:var(--muted)}
+.pkgremove:hover{background:none;border-color:var(--bad);color:var(--bad)}
+.pkgchange:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .picks.big label{padding:12px 22px;font-size:1rem}
 .picks[aria-invalid="true"] label{border-color:var(--bad)}
 .hp{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -99,8 +111,14 @@ fieldset.part:last-of-type{border-bottom:0}
 .err{color:var(--bad);font-family:var(--display);font-size:.92rem}
 .err:empty{display:none}
 .agree{font-size:.88rem;color:var(--muted);flex-basis:100%}
+/* موافقة على سياسة الخصوصية قبل الإرسال */
+.consent{flex-basis:100%;display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:.95rem;line-height:1.7}
+.consent input{width:20px;height:20px;margin-top:4px;flex-shrink:0;accent-color:var(--ink);cursor:pointer}
+.consent a{color:inherit}
+.consent:has(input[aria-invalid="true"]) span{color:var(--bad)}
+#consent-err{flex-basis:100%;margin:-6px 0 0}
 
-aside.after{position:sticky;top:24px}
+aside.after{position:static}  /* «بعد ما ترسل الطلب» تحت النموذج مرة، على الكمبيوتر والجوال */
 aside.after h2{font-size:1.1rem;font-weight:800;margin-bottom:14px}
 .steps{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
 .steps li{position:relative;padding:16px 26px 14px 0;border-bottom:1px solid var(--rule)}
@@ -128,7 +146,6 @@ body.loading .intro,body.loading .layout{visibility:hidden}
 .preview .sel-sec{outline:3px solid var(--mark)!important;outline-offset:4px}
 @media (max-width:900px){
   .layout{grid-template-columns:1fr;gap:28px}
-  aside.after{position:static;order:-1}
 }
 @media (max-width:600px){
   .grid{grid-template-columns:1fr}
@@ -228,10 +245,11 @@ body.loading .intro,body.loading .layout{visibility:hidden}
         <div id="parts"></div>
         <div class="hp" aria-hidden="true"><label for="web">اترك هذا الحقل فارغًا</label><input type="text" id="web" tabindex="-1" autocomplete="off"></div>
         <div class="send" data-box="submit">
+          <label class="consent" id="consent-box"><input type="checkbox" id="consent" required aria-describedby="consent-err"><span>أوافق على استخدام بياناتي للتواصل معي بخصوص الطلب، كما في <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a>.</span></label>
+          <p class="ferr" id="consent-err" role="alert" hidden>لازم توافق على سياسة الخصوصية قبل إرسال الطلب.</p>
           <button type="submit" class="btn" id="go"><span class="spin" aria-hidden="true"></span><span class="t">أرسل الطلب</span></button>
           <span class="err" id="err" role="alert"></span>
           <p class="agree" id="agree"></p>
-          <p class="agree">بإرسال الطلب توافق على استخدام بياناتك للتواصل معك بخصوصه، كما في <a href="privacy.html">سياسة الخصوصية</a>.</p>
           <p class="agree">نحفظ اللي تكتبه هنا أول بأول، عشان لو ما كمّلت الطلب نقدر نتواصل معك ونساعدك تكمّله.</p>
         </div>
       </form>
@@ -259,10 +277,10 @@ body.loading .intro,body.loading .layout{visibility:hidden}
   </div>
 </div>
 <noscript><div class="wrap" style="padding:30px 0"><p>صفحة الطلب تحتاج تفعيل JavaScript. تقدر تراسلنا على واتساب: <a href="https://wa.me/966548256023">wa.me/966548256023</a></p></div></noscript>
-<script src="config.js?v=202611271755"></script>
-<script src="js/appcheck.js?v=202611271755"></script>
-<script src="js/content.js?v=202611271755"></script>
-<script src="js/visit.js?v=202611271755"></script>
-<script src="js/request.js?v=202611271755"></script>
+<script src="config.js?v=202611281226"></script>
+<script src="js/appcheck.js?v=202611281226"></script>
+<script src="js/content.js?v=202611281226"></script>
+<script src="js/visit.js?v=202611281226"></script>
+<script src="js/request.js?v=202611281226"></script>
 </body>
 </html>

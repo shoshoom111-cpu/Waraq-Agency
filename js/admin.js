@@ -133,7 +133,7 @@ function svcOption(D, kind, val) {
     if (!Array.isArray(f.options)) continue;
     if (kind === "id" && f.type !== "svclist") continue;
     if (kind === "name" && f.key !== "picks" && f.type !== "svclist") continue;
-    const o = f.options.find(o => o && (kind === "id" ? o.id === val : String(o.t || "").trim() === val));
+    const o = f.options.find(o => o && (kind === "id" ? o.id === val : String(o.t || "").trim() === val || (Array.isArray(o.aka) && o.aka.includes(val))));   // aka = أسماء الخيار القديمة (الطلبات القديمة)
     if (o) return { name: String(o.t).trim(), ref: f.id + "/" + o.id, dash: !!o.dash };
   }
   return null;
@@ -556,6 +556,28 @@ function syncPkg(H, Rq) {
   f.options.forEach(o => { if (o && o.t && !/^#/.test(o.t) && (!o.cid || !live.has(o.cid))) o.hidden = true; });
   return JSON.stringify(f.options) !== before;
 }
+/* «خدمات متخصصة» في الصفحة الأساسية → خيارات «خدمات مخصصة» في نموذج الطلب. كل خدمة لها معرّف ثابت (sid) يربطها بخيارها:
+   خدمة جديدة = خيار جديد، تغيّر اسمها = يتغيّر اسم الخيار (وأسئلته تبقى)، انخفت أو انحذفت = الخيار ينخفي. الخيارات اللي مو مربوطة بخدمة ما تنلمس.
+   يرجّع أسماء الخيارات اللي تغيّرت [قديم، جديد] عشان روابط البطاقات تتحدّث. */
+const PICK_ALIAS = { "معارض الكتاب": ["معرض كتاب"], "تصاميم خاصة": ["بوسترات"], "حملة ترويجية متكاملة": ["حملة متكاملة"] };   // ربط أول مرة للخيارات القديمة
+function syncPicks(H, Rq) {
+  const f = reqFields(Rq).find(x => x.key === "picks"); if (!f || !Array.isArray(f.options)) return null;
+  const sec = ((H && H.sections) || []).find(s => s.type === "services"); if (!sec) return null;
+  const before = JSON.stringify(f.options), live = new Set(), ren = [], norm = t => String(t || "").replace(/\s+/g, " ").trim();
+  (sec.data.items || []).forEach(it => {
+    if (!it || !norm(it.title)) return;
+    if (!it.sid) it.sid = uid("s");
+    const t = norm(it.title), off = !!(it.hidden || sec.hidden); live.add(it.sid);
+    let o = f.options.find(x => x && x.sid === it.sid) ||
+      f.options.find(x => x && !x.sid && x.t && (norm(x.t) === t || (PICK_ALIAS[t] || []).includes(norm(x.t))));
+    if (!o) { if (off) return; o = { id: uid("o"), t }; f.options.push(o); }
+    if (o.t !== t) { ren.push([o.t, t]); if (o.t) o.aka = [...new Set([...(o.aka || []), norm(o.t)])].slice(-5); o.t = t; }
+    o.sid = it.sid;
+    if (off) o.hidden = true; else delete o.hidden;
+  });
+  f.options.forEach(o => { if (o && o.sid && !live.has(o.sid)) o.hidden = true; });
+  return JSON.stringify(f.options) !== before ? ren : null;
+}
 /* الحفظ ما يكتب فوق نسخة أحدث انحفظت من جهاز أو صفحة ثانية بعد ما انفتح المحرر هنا (الاسترجاع من السجل يتجاوز هذا عن قصد) */
 async function publish(id, json, note, force) {
   const ref = F.doc(db, "siteContent", id), E = ED[id];
@@ -579,7 +601,7 @@ const S = (k, l, t = "text", ex = {}) => ({ k, l, t, ...ex });
 const TITLE = S("title", "العنوان", "text", { title: true }), SUB = S("sub", "السطر تحت العنوان");
 const L = (k, l, item, tpl, tk, ex = {}) => S(k, l, "list", { item, tpl, tk, ...ex });
 const TYPES = {
-  hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta1", "زر الطلب"), S("cta2", "الزر الثاني (يودّي للحملات)"),
+  hero: { name: "الواجهة", unique: true, nav: false, fields: [S("title", "العنوان", "text", { title: true }), S("highlight", "الكلمة المظللة بالأصفر"), S("lead", "النص تحت العنوان", "area"), S("cta2", "الزر الثاني (يودّي للحملات)"),
       L("bullets", "النقاط تحت الأزرار", [S("text", "النقطة", "text", { title: true })], { text: "نقطة جديدة" }, "text")] },
   services: { name: "الخدمات", fields: [TITLE, SUB, S("button", "زر الطلب تحت الخدمات", "text", { hint: "فاضي = «اطلب خدمة»" }), L("items", "الخدمات", [S("title", "اسم الخدمة", "text", { title: true }), S("text", "الوصف", "area"), S("tags", "الوسوم", "text", { hint: "افصلي بينها بفاصلة ،" })], { title: "خدمة جديدة", text: "", tags: "" }, "title")],
     make: () => ({ title: "خدماتنا", sub: "", items: [{ title: "خدمة جديدة", text: "", tags: "" }] }) },
@@ -908,7 +930,10 @@ $("ed-save").addEventListener("click", async () => {
       }
     } else {
       // كل بطاقة حملة جاهزة تاخذ معرّف ثابت (cid) عشان حاسبة الحملات تتبعها لو تغيّر اسمها أو انحذفت
-      if (E.id === "home") { const seen = new Set(); (E.data.sections || []).filter(s => s.type === "campaigns").forEach(s => ["a", "b"].forEach(k => (s.data[k] || []).forEach(c => { if (c && (!c.cid || seen.has(c.cid))) c.cid = uid("k"); if (c) seen.add(c.cid); }))); json = JSON.stringify(E.data); }
+      if (E.id === "home") { const seen = new Set(); (E.data.sections || []).filter(s => s.type === "campaigns").forEach(s => ["a", "b"].forEach(k => (s.data[k] || []).forEach(c => { if (c && (!c.cid || seen.has(c.cid))) c.cid = uid("k"); if (c) seen.add(c.cid); })));
+        // وكل خدمة في «خدمات متخصصة» تاخذ معرّف ثابت (sid) يربطها بخيارها في نموذج الطلب
+        const ss = new Set(); (E.data.sections || []).filter(s => s.type === "services").forEach(s => (s.data.items || []).forEach(it => { if (it && (!it.sid || ss.has(it.sid))) it.sid = uid("s"); if (it) ss.add(it.sid); }));
+        json = JSON.stringify(E.data); }
       await publish(E.id, json, $("ed-note").value.trim() || "تعديل");
       // قائمة «حملة جاهزة» في نموذج الطلب تمشي مع البطاقات: تنضاف، يتغيّر اسمها، أو تنخفي
       if (E.id === "home") {
@@ -916,9 +941,15 @@ $("ed-save").addEventListener("click", async () => {
         const R = ED.request;
         if (R && R.data) {
           const wasClean = !isDirty("request");
-          if (syncPkg(E.data, R.data)) {
-            if (wasClean) { await publish("request", JSON.stringify(R.data), "تحديث قائمة الحملات الجاهزة تلقائيًا"); extra = " وتحدّثت قائمة «حملة جاهزة» في نموذج الطلب."; }
-            else { try { localStorage.setItem("waraq-draft-request", JSON.stringify(R.data)); } catch {} extra = " وتحدّثت قائمة «حملة جاهزة» في صفحة الطلبات، احفظيها من «تعديل صفحة الطلبات»."; }
+          const pk = syncPkg(E.data, R.data), ren = syncPicks(E.data, R.data);
+          if (pk || ren) {
+            if (wasClean) { await publish("request", JSON.stringify(R.data), "تحديث خيارات نموذج الطلب من الصفحة الأساسية تلقائيًا"); extra = " وتحدّثت خيارات نموذج الطلب (الحملات الجاهزة والخدمات المتخصصة)."; }
+            else { try { localStorage.setItem("waraq-draft-request", JSON.stringify(R.data)); } catch {} extra = " وتحدّثت خيارات صفحة الطلبات، احفظيها من «تعديل صفحة الطلبات»."; }
+          }
+          // خدمة تغيّر اسمها: البطاقات اللي تشير لخيارها القديم تتحدّث للاسم الجديد
+          if (ren && ren.length) {
+            let n = 0; homeRefs(E.data, (obj, k, src) => { const r = src === "picks" && ren.find(x => sameRef(obj[k], x[0])); if (r) { obj[k] = r[1]; n++; } });
+            if (n) await publish("home", JSON.stringify(E.data), "تحديث أسماء الخدمات في البطاقات تلقائيًا");
           }
         }
       }

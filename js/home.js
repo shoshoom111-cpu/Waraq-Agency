@@ -29,7 +29,7 @@ var R={
     return '<div class="wrap" data-sec="'+i+'"><div class="hero"><div>'+
       '<h1>'+esc(d.title)+(d.highlight?' <span class="hl">'+esc(d.highlight)+'</span>':'')+'</h1>'+
       (d.lead?'<p class="lead">'+esc(d.lead)+'</p>':'')+
-      '<div class="cta">'+(d.cta1?'<a class="btn" href="request.html">'+esc(d.cta1)+'</a>':'')+(d.cta2&&firstLink?'<a class="btn line" href="'+anchor(firstLink)+'">'+esc(d.cta2)+'</a>':'')+'</div>'+
+      '<div class="cta">'+(d.cta2&&firstLink?'<a class="btn line" href="'+anchor(firstLink)+'">'+esc(d.cta2)+'</a>':'')+'</div>'+
       (vis(d.bullets).length?'<ul class="for">'+vis(d.bullets).map(function(b){return '<li>'+esc(b.text)+'</li>'}).join("")+'</ul>':'')+
       '</div></div></div>';
   },
@@ -138,7 +138,7 @@ function render(content){
   var reqSec=secs.filter(function(s){return s.type==="request"})[0];
   var html='<a class="skip" href="request.html">انتقل إلى طلب الخدمة</a>'+
     '<div class="top" data-sec="brand"><div class="wrap"><header class="mast"><a class="brand" href="#top"><img class="logo" src="img/wordmark-blue.png" alt="'+esc(C.brand.name)+'" width="56" height="46"><span>'+esc(C.brand.tagline)+'</span></a>'+
-    '<span class="beta">إصدار تجريبي</span><a class="btn mcta" href="request.html">'+esc(C.brand.cta)+'</a><nav aria-label="أقسام الصفحة">'+
+    '<span class="beta">إصدار تجريبي</span><nav aria-label="أقسام الصفحة">'+
     vis(C.brand.links).filter(function(l){return l.text&&l.url}).map(function(l){var ext=/^https?:/i.test(l.url);return '<a class="xl" href="'+esc(safeUrl(l.url))+'"'+(ext?' target="_blank" rel="noopener"':'')+'>'+esc(l.text)+'</a>'}).join("")+
     navs.map(function(s){return '<a href="'+anchor(s)+'">'+esc(s.nav)+'</a>'}).join("")+
     '<a class="btn" href="request.html">'+esc(C.brand.cta)+'</a></nav></header></div></div>'+
